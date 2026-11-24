@@ -1,0 +1,428 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>計時器 顯示螢幕</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* 投影用深色單一主題：大字倒數置中，遙控頁為單欄按鈕 */
+:root{
+  --bg:#0E1416; --panel:#172126; --line:#26343A; --fg:#EEF3F2; --muted:#93A4A6;
+  --talk:#3FBF8F; --warn:#F2B33D; --over:#F0524A; --ask:#4FA3E8; --reply:#A98BF0;
+  --display:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","Consolas",ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+.view{min-height:100%;box-sizing:border-box;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+
+/* 首頁 */
+#home{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;text-align:center}
+#home h1{font-size:clamp(24px,5vw,40px);margin:0;text-wrap:balance}
+#home p{color:var(--muted);margin:0;max-width:34em;line-height:1.7}
+.pick{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.pick a{display:block;min-width:220px;padding:22px 26px;border-radius:14px;background:var(--panel);border:1px solid var(--line);color:var(--fg);text-decoration:none;font-weight:700;font-size:20px}
+.pick a small{display:block;color:var(--muted);font-weight:500;font-size:14px;margin-top:6px}
+
+/* 顯示螢幕 */
+#display{display:flex;flex-direction:column;height:100%;padding-block:3vh}
+.d-top{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.d-town{font-size:clamp(28px,6vw,88px);font-weight:900;letter-spacing:.04em}
+.d-slot{font-family:var(--mono);color:var(--muted);font-size:clamp(14px,2vw,26px)}
+.d-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1vh;min-height:0}
+.d-phase{font-size:clamp(22px,4.5vw,64px);font-weight:700;padding:.15em .8em;border-radius:999px;background:color-mix(in srgb,var(--ph) 18%,transparent);color:var(--ph)}
+.d-time{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;font-size:clamp(90px,24vw,360px);line-height:1;color:var(--ph);transition:color .3s}
+.d-note{font-size:clamp(18px,3vw,44px);font-weight:700;min-height:1.3em;color:var(--fg)}
+.d-bar{height:14px;border-radius:7px;background:var(--line);overflow:hidden}
+.d-bar i{display:block;height:100%;background:var(--ph);width:0%;transition:width .5s linear}
+.d-steps{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.d-steps span{flex:1;min-width:120px;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--line);color:var(--muted);font-size:clamp(14px,1.8vw,24px)}
+.d-steps span.on{border-color:var(--ph);color:var(--fg);background:color-mix(in srgb,var(--ph) 14%,transparent)}
+.d-steps span.done{opacity:.45}
+.paused .d-time{animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.paused .d-time{animation:none;opacity:.6}}
+#unlock{position:fixed;inset:0;background:rgba(8,12,13,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:5;text-align:center;padding:24px}
+#unlock button{font-size:24px;font-weight:700;padding:18px 34px;border-radius:14px;border:0;background:var(--talk);color:#06231A}
+#unlock p{color:var(--muted);margin:0}
+.snd{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.snd button{font-size:17px;font-weight:700;padding:12px 18px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.snd button.sel{border-color:var(--talk);background:color-mix(in srgb,var(--talk) 18%,transparent)}
+.d-sync{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(10px,env(safe-area-inset-bottom,0px));font-size:12px;color:var(--muted)}
+
+/* 遙控器 */
+#remote{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.r-head{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:6px}
+.r-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.r-town{font-size:24px;font-weight:900}
+.pill{font-size:14px;font-weight:700;padding:4px 12px;border-radius:999px;color:var(--ph);background:color-mix(in srgb,var(--ph) 18%,transparent)}
+.r-time{font-family:var(--mono);font-size:56px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ph);line-height:1.1}
+.r-sub{color:var(--muted);font-size:14px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:16px 10px;font-size:18px;font-weight:700;min-height:58px}
+.btn:active{transform:translateY(1px)}
+.btn.big{font-size:26px;min-height:84px;border:0;background:var(--talk);color:#06231A}
+.btn.big.pause{background:var(--warn);color:#2A1C00}
+.btn.arm{background:var(--over);border-color:var(--over);color:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grid4 .btn{font-family:var(--mono);font-size:17px;padding:14px 4px}
+.sec{color:var(--muted);font-size:13px;letter-spacing:.08em;margin:6px 2px 0}
+.towns{display:grid;gap:6px}
+.towns button{display:flex;justify-content:space-between;gap:10px;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:transparent;font-size:16px}
+.towns button .t{font-family:var(--mono);color:var(--muted)}
+.towns button.cur{border-color:var(--talk);background:color-mix(in srgb,var(--talk) 12%,transparent)}
+.towns button.done{opacity:.5}
+.towns button.done .n::after{content:"　已完成";font-size:13px;color:var(--muted)}
+.r-foot{color:var(--muted);font-size:12px;text-align:center;line-height:1.6}
+.r-msg{min-height:1.4em;text-align:center;color:var(--warn);font-size:14px}
+</style>
+
+<section id="home" class="view" hidden>
+  <h1>鄉鎮市考核簡報計時器</h1>
+  <p>請直接開「計時器_顯示螢幕」或「計時器_遙控器」檔案。</p>
+  <div class="pick">
+    <a href="#display" target="_blank">顯示螢幕<small>全螢幕倒數、響鈴</small></a>
+    <a href="#remote" target="_blank">遙控器<small>在筆電操作開始、暫停、切換</small></a>
+  </div>
+</section>
+
+<section id="display" class="view" hidden>
+  <div class="d-top"><div class="d-town" id="dTown">—</div><div class="d-slot" id="dSlot"></div></div>
+  <div class="d-mid">
+    <div class="d-phase" id="dPhase">待命</div>
+    <div class="d-time" id="dTime">10:00</div>
+    <div class="d-note" id="dNote"></div>
+  </div>
+  <div class="d-bar"><i id="dBar"></i></div>
+  <div class="d-steps" id="dSteps"></div>
+  <div class="d-sync" id="dSync"></div>
+  <div id="unlock">
+    <p>簡報剩 3 分鐘響鈴 1 聲、剩 2 分鐘響鈴 2 聲；時間到播語音「時間到，請停止簡報」</p>
+    <div class="snd" id="sndPick"></div>
+    <button id="unlockBtn" type="button">啟用響鈴並全螢幕</button>
+    <p>瀏覽器規定要先點一下才能出聲。點完後鈴聲會自動依規則響起。</p>
+  </div>
+</section>
+
+<section id="remote" class="view" hidden>
+  <div class="r-head">
+    <div class="r-row"><div class="r-town" id="rTown">—</div><span class="pill" id="rPhase">待命</span></div>
+    <div class="r-time" id="rTime">10:00</div>
+    <div class="r-sub" id="rSub"></div>
+  </div>
+  <button class="btn big" id="bMain" type="button">開始</button>
+  <div class="grid2">
+    <button class="btn" id="bPrev" type="button">上一階段</button>
+    <button class="btn" id="bNext" type="button">下一階段</button>
+  </div>
+  <div class="sec">調整本階段剩餘時間</div>
+  <div class="grid4">
+    <button class="btn" data-adj="-60" type="button">−1分</button>
+    <button class="btn" data-adj="-10" type="button">−10秒</button>
+    <button class="btn" data-adj="10" type="button">+10秒</button>
+    <button class="btn" data-adj="60" type="button">+1分</button>
+  </div>
+  <div class="grid2">
+    <button class="btn" id="bReset" type="button">本階段重來</button>
+    <button class="btn" id="bBell" type="button">手動響鈴</button>
+  </div>
+  <div class="r-msg" id="rMsg"></div>
+  <div class="sec">場次（點選切換，執行中需按兩次確認）</div>
+  <div class="towns" id="towns"></div>
+  <div class="r-foot" id="rSync"></div>
+</section>
+
+<script>
+/* 115年鄉鎮市考核會場連線（主控台、計時器、簡報播放器、委員儀表板共用）
+   - 經公開 MQTT 中繼（WebSocket）同時連多個伺服器，訊息去重，任一台通即可。
+   - 不需登入、不需帳號；斷網時各系統照常獨立運作。
+   - 同一台電腦的視窗另用 BroadcastChannel 互通（不需網路）。 */
+window.VENUE=(function(){
+  const SITE="ndnb7hg6ad1l";
+  const PREFIX="nt115v/"+SITE+"/";
+  const BROKERS=(window.VENUE_BROKERS||[
+    "wss://broker.emqx.io:8084/mqtt",
+    "wss://broker.hivemq.com:8884/mqtt",
+    "wss://test.mosquitto.org:8081/mqtt"
+  ]);
+  const enc=new TextEncoder(), dec=new TextDecoder();
+  const subs=[];               // {filter, fn}
+  const conns=[];
+  const seen=new Map();        // 訊息去重
+  let statusFn=()=>{}, will=null, started=false;
+  let bc=null; try{ bc=new BroadcastChannel("nt115v-"+SITE); bc.onmessage=e=>deliver(e.data.t,e.data.p,"bc"); }catch(e){}
+
+  const rid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+  function str(s){const b=enc.encode(s); return [b.length>>8,b.length&255,...b];}
+  function remLen(n){const o=[]; do{let d=n%128; n=Math.floor(n/128); if(n>0)d|=128; o.push(d);}while(n>0); return o;}
+  function packet(type,body){return new Uint8Array([type,...remLen(body.length),...body]);}
+  function match(filter,topic){
+    const f=filter.split("/"), t=topic.split("/");
+    for(let i=0;i<f.length;i++){ if(f[i]==="#") return true; if(f[i]!=="+"&&f[i]!==t[i]) return false; }
+    return f.length===t.length;
+  }
+  function deliver(topic,payload,src){
+    let obj; try{ obj=typeof payload==="string"?JSON.parse(payload):payload; }catch(e){ return; }
+    if(obj&&obj._id){ const k=topic+"|"+obj._id; if(seen.has(k)) return; seen.set(k,Date.now());
+      if(seen.size>500){ const cut=Date.now()-600000; for(const [kk,v] of seen) if(v<cut) seen.delete(kk); } }
+    for(const s of subs) if(match(s.filter,topic)) try{ s.fn(obj,topic.slice(PREFIX.length)); }catch(e){ console.error(e); }
+  }
+  function Conn(url){
+    const c={url,ws:null,ok:false,buf:new Uint8Array(0),ping:0,retry:0,pid:1};
+    c.open=()=>{
+      try{ c.ws=new WebSocket(url,"mqtt"); }catch(e){ return c.later(); }
+      c.ws.binaryType="arraybuffer";
+      const to=setTimeout(()=>{ try{c.ws.close()}catch(e){} },8000);
+      c.ws.onopen=()=>{
+        let flags=0x02, pay=str("nt115-"+rid());
+        if(will){ flags|=0x04|0x20; pay=pay.concat(str(PREFIX+will.topic), str(JSON.stringify(will.obj))); }
+        const vh=[...str("MQTT"),4,flags,0,30];
+        c.ws.send(packet(0x10,vh.concat(pay)));
+      };
+      c.ws.onmessage=e=>{ clearTimeout(to); c.feed(new Uint8Array(e.data)); };
+      c.ws.onclose=()=>{ clearTimeout(to); const was=c.ok; c.ok=false; clearInterval(c.ping); if(was) report(); c.later(); };
+      c.ws.onerror=()=>{};
+    };
+    c.later=()=>{ c.retry=Math.min(c.retry+1,6); setTimeout(c.open,1000*Math.min(30,2**c.retry)); };
+    c.feed=data=>{
+      const b=new Uint8Array(c.buf.length+data.length); b.set(c.buf); b.set(data,c.buf.length); c.buf=b;
+      while(c.buf.length>=2){
+        let mul=1,len=0,i=1,byte;
+        do{ if(i>=c.buf.length) return; byte=c.buf[i++]; len+=(byte&127)*mul; mul*=128; }while(byte&128);
+        if(c.buf.length<i+len) return;
+        const hdr=c.buf[0], type=hdr>>4, body=c.buf.slice(i,i+len); c.buf=c.buf.slice(i+len);
+        if(type===2){ if(body[1]===0){ c.ok=true; c.retry=0; c.subscribeAll(); c.ping=setInterval(()=>{try{c.ws.send(new Uint8Array([0xC0,0]))}catch(e){}},20000); report(); if(c.onup) c.onup(); } }
+        else if(type===3){ const tl=(body[0]<<8)|body[1]; const topic=dec.decode(body.slice(2,2+tl)); let p=2+tl; if(hdr&6) p+=2; deliver(topic,dec.decode(body.slice(p)),"mqtt"); }
+      }
+    };
+    c.subscribe=filter=>{ if(!c.ok) return; const id=c.pid++&65535||1; c.ws.send(packet(0x82,[id>>8,id&255,...str(PREFIX+filter),0])); };
+    c.subscribeAll=()=>{ const done=new Set(); for(const s of subs){ if(done.has(s.raw)) continue; done.add(s.raw); c.subscribe(s.raw); } };
+    c.publish=(topic,payload,retain)=>{ if(!c.ok) return false; try{ c.ws.send(packet(0x30|(retain?1:0),[...str(PREFIX+topic),...enc.encode(payload)])); return true; }catch(e){ return false; } };
+    return c;
+  }
+  function report(){ statusFn(conns.filter(c=>c.ok).length, conns.length); }
+  let upFns=[];
+  return {
+    site:SITE,
+    start(opts){ if(started) return; started=true; opts=opts||{}; will=opts.will||null; if(opts.onStatus) statusFn=opts.onStatus;
+      if(opts.onUp) upFns.push(opts.onUp);
+      for(const u of BROKERS){ const c=Conn(u); c.onup=()=>upFns.forEach(f=>f()); conns.push(c); c.open(); } report(); },
+    onStatus(fn){ statusFn=fn; report(); },
+    onUp(fn){ upFns.push(fn); },
+    connected(){ return conns.filter(c=>c.ok).length; },
+    sub(filter,fn){ subs.push({filter:PREFIX+filter,raw:filter,fn}); for(const c of conns) c.subscribe(filter); },
+    pub(topic,obj,retain){ const o=Object.assign({},obj,{_id:rid(),_ts:Date.now()}); const p=JSON.stringify(o);
+      let n=0; for(const c of conns) if(c.publish(topic,p,retain)) n++;
+      try{ bc&&bc.postMessage({t:PREFIX+topic,p:o}); }catch(e){}
+      return n; }
+  };
+})();
+
+</script>
+<script>window.TIMER_MODE="display";</script>
+<script>
+// ---- 規則 ----
+const PHASES=[
+  {name:"公所簡報",sec:600,color:"--talk"},
+  {name:"委員提問",sec:300,color:"--ask"},
+  {name:"公所回覆",sec:300,color:"--reply"}
+];
+const TOWNS=[["鹿谷鄉","09:10"],["集集鎮","09:35"],["名間鄉","10:00"],["南投市","10:35"],["仁愛鄉","11:00"],["水里鄉","11:25"],
+             ["埔里鎮","13:40"],["竹山鎮","14:05"],["中寮鄉","14:30"],["魚池鄉","15:10"],["信義鄉","15:35"],["草屯鎮","16:00"],["國姓鄉","16:25"]];
+// 提示：簡報剩3分響鈴1聲、剩2分響鈴2聲、時間到播語音「時間到，請停止簡報」；提問、回覆時間到各響鈴1聲
+const BELLS={0:[[180,1],[120,2],[0,"voice"]],1:[[0,1]],2:[[0,1]]};
+
+// ---- 狀態 ----
+// phase -1 = 待命（顯示下一場）；running 時以 endsAt 計時，暫停時以 remainMs 保存
+let S={town:0,phase:-1,running:false,endsAt:0,remainMs:600000,done:[],bell:{seq:0,n:0},rev:0};
+const mode=()=>(location.hash||"").replace("#","");
+function remain(st=S){return st.running? st.endsAt-Date.now() : st.remainMs}
+function fmt(ms){const neg=ms<0;let s=Math.ceil(Math.abs(ms)/1000);if(neg)s=Math.floor(Math.abs(ms)/1000);
+  const m=Math.floor(s/60),r=s%60;return (neg?"+":"")+String(m).padStart(2,"0")+":"+String(r).padStart(2,"0")}
+
+// ---- 同步 ----
+let db=null,room=null,ref=null,synced=false,writing=Promise.resolve();
+// 離線單機版：同一台電腦的視窗用 BroadcastChannel＋localStorage 同步，狀態存在本機
+const LKEY="townTimer115";
+let bc=null;
+async function initSync(){
+  try{ bc=new BroadcastChannel("townTimer115"); bc.onmessage=e=>{const d=e.data; if(d&&typeof d.rev==="number"){dispSeen=Date.now();apply(d,"bc");}}; }catch(e){}
+  addEventListener("storage",e=>{ if(e.key===LKEY&&e.newValue){ try{const d=JSON.parse(e.newValue); if(d&&typeof d.rev==="number")apply(d,"ls")}catch(x){} } });
+  try{ const v=localStorage.getItem(LKEY); if(v){const d=JSON.parse(v); if(d&&typeof d.rev==="number")apply(d,"ls")} }catch(e){}
+  synced=true;
+}
+function setSync(t){for(const id of["dSync","rSync"]){const el=document.getElementById(id);if(el)el.textContent=t}}
+function apply(d,src){
+  if(d.rev<S.rev) return;
+  const prevBell=S.bell?.seq||0, first=S.rev===0;
+  S=Object.assign({done:[],bell:{seq:0,n:0}},d);
+  if(!first && S.bell.seq>prevBell && mode()==="display") ring(S.bell.n);
+  resetFired(); render();
+}
+function commit(next){
+  next.rev=Date.now(); S=next; resetFired(); render();
+  venuePush();
+  try{localStorage.setItem(LKEY,JSON.stringify(next))}catch(e){}
+  try{bc&&bc.postMessage(next)}catch(e){}
+  if(ref){ writing=writing.then(()=>ref.set(structuredClone(next))).catch(e=>msg(e&&e.code==="invalid_argument"?"這個帳號無法控制，請用擁有者帳號登入":"同步失敗，稍後再按一次")); }
+}
+function clone(){return structuredClone(S)}
+
+// ---- 動作 ----
+function phaseMs(p){return PHASES[p].sec*1000}
+function startOrPause(){
+  const n=clone();
+  if(n.phase===-1){n.phase=0;n.remainMs=phaseMs(0)}
+  if(n.running){n.remainMs=n.endsAt-Date.now();n.running=false}
+  else{n.endsAt=Date.now()+n.remainMs;n.running=true}
+  commit(n);
+}
+function gotoPhase(p,run){
+  const n=clone();
+  if(p>2){ if(!n.done.includes(n.town))n.done.push(n.town);
+    n.town=Math.min(n.town+1,TOWNS.length-1); n.phase=-1; n.running=false; n.remainMs=phaseMs(0); return commit(n);}
+  if(p<-1)p=-1;
+  n.phase=p; n.remainMs=p<0?phaseMs(0):phaseMs(p);
+  if(run&&p>=0){n.running=true;n.endsAt=Date.now()+n.remainMs}else n.running=false;
+  commit(n);
+}
+function adjust(sec){const n=clone(); if(n.phase<0)return msg("請先開始本場");
+  if(n.running)n.endsAt+=sec*1000; else n.remainMs+=sec*1000; commit(n);}
+function resetPhase(){const n=clone(); if(n.phase<0)return; n.running=false; n.remainMs=phaseMs(n.phase); commit(n);}
+function bell(k=1){const n=clone(); n.bell={seq:(n.bell?.seq||0)+1,n:k}; commit(n);}
+function pickTown(i){const n=clone(); n.town=i; n.phase=-1; n.running=false; n.remainMs=phaseMs(0); n.done=n.done.filter(x=>x!==i); commit(n);}
+const ACT={main:()=>startOrPause(),step:v=>{ if(S.phase<0&&v>0) return gotoPhase(0,false); gotoPhase(S.phase+(v>0?1:-1),false); },adj:v=>adjust(+v),reset:()=>resetPhase(),bell:v=>{ bell(v||1); if(mode()==="display") ring(v||1); },town:v=>{ if(Number.isInteger(+v)&&+v>=0&&+v<TOWNS.length) pickTown(+v); }};
+/* 遙控器：指令一律送給顯示螢幕執行（同一台電腦走視窗通道，不同電腦走會場連線） */
+function act(a,v){ if(mode()==="display") return ACT[a](v); if(window.VENUE) VENUE.pub("timer/cmd",{a,v}); }
+
+// ---- 響鈴（合成鐘聲，免檔案）----
+let ac=null;
+// 鈴聲（程式合成）：三種較柔和的樣式，於筆電啟用畫面試聽選擇
+function tone(out,st,freq,amp,dec,type="sine"){
+  const o=ac.createOscillator(), g=ac.createGain(); o.type=type; o.frequency.value=freq;
+  g.gain.setValueAtTime(0.0001,st); g.gain.exponentialRampToValueAtTime(amp,st+0.008); g.gain.exponentialRampToValueAtTime(0.0001,st+dec);
+  o.connect(g); g.connect(out); o.start(st); o.stop(st+dec+0.05);
+}
+const SOUNDS={
+  phonelow:{name:"老電話（中速低音）",len:1.2,play(out,t){ // 每秒約 11 下
+    for(let k=0;k<13;k++){const st=t+k/11,f=k%2?1:1.06; tone(out,st,980*f,0.7,0.14); tone(out,st,1470*f,0.25,0.1);} }},
+};
+let soundKey="phonelow";
+// 語音提示：使用瀏覽器內建語音（優先台灣國語）
+function say(text,delayMs=0,times=2){
+  try{ const ss=window.speechSynthesis; if(!ss) return;
+    setTimeout(()=>{ ss.cancel(); const vs=ss.getVoices();
+      const v=vs.find(v=>/zh[-_]TW/i.test(v.lang))||vs.find(v=>/^zh/i.test(v.lang))||null;
+      for(let i=0;i<times;i++){ const u=new SpeechSynthesisUtterance(text); u.voice=v; u.lang=v?.lang||"zh-TW"; u.rate=0.95; u.volume=1; ss.speak(u); }
+    },delayMs);
+  }catch(e){}
+}
+const END_SPEECH="時間到，請停止簡報。"; // 播放兩次
+function ring(n,key=soundKey){if(!ac)return; const s=SOUNDS[key]; const out=ac.createGain(); out.gain.value=0.5; out.connect(ac.destination);
+  const t=ac.currentTime+0.05; for(let i=0;i<n;i++) s.play(out,t+i*(s.len+0.5));}
+let fired={};
+function resetFired(){fired={};const r=remain();const b=BELLS[S.phase]||[];
+  for(const [at] of b){ if(r<=at*1000) fired[S.town+"-"+S.phase+"-"+at]=true; }} // 已過的門檻不補響
+function checkBells(){ if(mode()!=="display"||!S.running||S.phase<0)return; const r=remain();
+  for(const [at,k] of (BELLS[S.phase]||[])){const key=S.town+"-"+S.phase+"-"+at; if(!fired[key]&&r<=at*1000){fired[key]=true;
+    if(k==="voice") say(END_SPEECH); else ring(k);
+    }}}
+
+// ---- 畫面 ----
+function phColor(){ if(S.phase<0)return"--muted"; const r=remain();
+  if(r<=0)return"--over"; if(S.phase===0&&r<=180000)return"--warn"; return PHASES[S.phase].color;}
+function render(){
+  const town=TOWNS[S.town]||TOWNS[0], r=remain(), c=`var(${phColor()})`;
+  document.documentElement.style.setProperty("--ph",c);
+  const pname=S.phase<0?"待命":PHASES[S.phase].name;
+  let note="";
+  if(S.phase<0) note=`下一場：${town[0]}　預定 ${town[1]}`;
+  else if(r<=0) note=S.phase===0?"時間到，請停止簡報，進入委員詢答":"時間到";
+  else if(!S.running) note=(S.remainMs===phaseMs(S.phase))?"準備開始":"暫停中";
+  else if(S.phase===0&&r<=120000) note="剩餘2分鐘";
+  else if(S.phase===0&&r<=180000) note="剩餘3分鐘";
+  if(mode()==="display"){
+    dTown.textContent=town[0]; dSlot.textContent=S.phase<0?"":`預定 ${town[1]}`;
+    dPhase.textContent=pname; dTime.textContent=S.phase<0?fmt(phaseMs(0)):fmt(r); dNote.textContent=note;
+    const tot=S.phase<0?1:phaseMs(S.phase); dBar.style.width=S.phase<0?"0%":Math.min(100,Math.max(0,(1-r/tot)*100))+"%";
+    dSteps.innerHTML=PHASES.map((p,i)=>`<span class="${i===S.phase?"on":i<S.phase?"done":""}">${p.name} ${p.sec/60}分</span>`).join("");
+    document.getElementById("display").classList.toggle("paused",S.phase>=0&&!S.running);
+  }
+  if(mode()==="remote"){
+    rTown.textContent=town[0]; rPhase.textContent=pname+(S.phase>=0&&!S.running?"・暫停":"");
+    rTime.textContent=S.phase<0?fmt(phaseMs(0)):fmt(r);
+    rSub.textContent=note||(S.phase>=0?`下一步：${S.phase<2?PHASES[S.phase+1].name:"結束本場"}`:"");
+    const fresh=S.phase>=0&&!S.running&&S.remainMs===phaseMs(S.phase);
+    bMain.textContent=S.running?"暫停":(S.phase<0?"開始簡報":fresh?`開始${PHASES[S.phase].name}`:"繼續");
+    bMain.classList.toggle("pause",S.running);
+    bNext.textContent=S.phase<0?"切到簡報階段":S.phase<2?`切到：${PHASES[S.phase+1].name}`:"結束本場";
+    towns.querySelectorAll("button").forEach((b,i)=>{b.classList.toggle("cur",i===S.town);b.classList.toggle("done",S.done.includes(i))});
+  }
+}
+function tick(){checkBells();render();setTimeout(tick,200)}
+
+// ---- 遙控器事件 ----
+let msgT;function msg(t){const el=document.getElementById("rMsg");if(!el)return;el.textContent=t;clearTimeout(msgT);msgT=setTimeout(()=>el.textContent="",3500)}
+let armed=null,armT;
+function confirmTap(btn,key,fn){ if(!S.running){fn();return}
+  if(armed===key){armed=null;btn.classList.remove("arm");fn();return}
+  document.querySelectorAll(".arm").forEach(b=>b.classList.remove("arm"));
+  armed=key;btn.classList.add("arm");msg("計時中，再按一次確認");clearTimeout(armT);armT=setTimeout(()=>{armed=null;btn.classList.remove("arm")},3000);}
+function initRemote(){
+  towns.innerHTML=TOWNS.map((t,i)=>`<button type="button" id="town${i}"><span class="n">${t[0]}</span><span class="t">${t[1]}</span></button>`).join("");
+  towns.querySelectorAll("button").forEach((b,i)=>b.onclick=()=>confirmTap(b,"town"+i,()=>act("town",i)));
+  bMain.onclick=()=>act("main");
+  bNext.onclick=()=>{ if(S.phase<0) return act("step",1); confirmTap(bNext,"next",()=>act("step",1)); };
+  bPrev.onclick=()=>confirmTap(bPrev,"prev",()=>act("step",-1));
+  bReset.onclick=()=>confirmTap(bReset,"reset",()=>act("reset"));
+  bBell.onclick=()=>act("bell",1);
+  document.querySelectorAll("[data-adj]").forEach(b=>b.onclick=()=>act("adj",+b.dataset.adj));
+}
+let wake=null;
+async function keepAwake(){try{wake=await navigator.wakeLock?.request("screen")}catch(e){}}
+async function ensureAudio(){ if(!ac){ac=new (window.AudioContext||window.webkitAudioContext)();} await ac.resume(); }
+function initDisplay(){
+  const pick=document.getElementById("sndPick");
+  const tests={warn:()=>ring(1), warn2:()=>ring(2), voice:()=>say(END_SPEECH)};
+  pick.innerHTML=`<button type="button" data-t="warn">試聽：剩 3 分鐘（1 聲）</button><button type="button" data-t="warn2">試聽：剩 2 分鐘（2 聲）</button><button type="button" data-t="voice">試聽：時間到語音</button>`;
+  pick.querySelectorAll("button").forEach(b=>b.onclick=async()=>{try{await ensureAudio(); tests[b.dataset.t]();}catch(e){}});
+  try{window.speechSynthesis?.getVoices();}catch(e){}
+  unlockBtn.onclick=async()=>{
+    try{await ensureAudio();ring(1);}catch(e){}
+    document.getElementById("unlock").hidden=true;
+    try{await document.documentElement.requestFullscreen?.()}catch(e){}
+    keepAwake();
+  };
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")keepAwake()});
+  document.addEventListener("keydown",e=>{ if(mode()==="display"&&(e.key===" "||e.code==="Space")){e.preventDefault();startOrPause();} });
+  document.getElementById("display").ondblclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+}
+function route(){const m=mode();
+  for(const id of["home","display","remote","board"]){const el=document.getElementById(id);if(el)el.hidden=(id!==(m==="display"||m==="remote"||m==="board"?m:"home"));}
+  render();}
+if(window.TIMER_MODE&&mode()!==window.TIMER_MODE) history.replaceState(null,"","#"+window.TIMER_MODE);
+let dispSeen=0, netN=0;
+function venuePush(){ if(mode()==="display"&&window.VENUE) VENUE.pub("timer/state",Object.assign({},S,{role:"display",online:true}),true); }
+function venueStatus(){
+  const m=mode();
+  if(m==="display") setSync(netN>0?"會場連線：已連上（遙控器、主控台可操作）":"會場連線：未連上，請用同一台電腦的遙控器視窗或空白鍵");
+  if(m==="remote"){ const ok=Date.now()-dispSeen<60000;
+    setSync(ok?"已連上顯示螢幕":(netN>0?"會場連線已連上，但找不到計時器顯示螢幕（請確認那台已開啟）":"會場連線未連上：只能遙控同一台電腦的顯示螢幕")); }
+}
+function initVenue(){ if(!window.VENUE) return; const m=mode();
+  if(m==="display"){
+    VENUE.start({will:{topic:"timer/state",obj:{role:"display",online:false}},onUp:venuePush,onStatus:n=>{netN=n;venueStatus();}});
+    VENUE.sub("timer/cmd",c=>{ if(c&&ACT[c.a]) ACT[c.a](c.v); });
+    setInterval(venuePush,15000);
+  }else{
+    VENUE.start({onStatus:n=>{netN=n;venueStatus();}});
+    VENUE.sub("timer/state",o=>{ if(!o||o.role!=="display") return; if(o.online===false){dispSeen=0;return venueStatus();} dispSeen=Date.now(); if(typeof o.rev==="number"){ const d=Object.assign({},o); delete d._id; delete d._ts; delete d.role; delete d.online; apply(d,"venue"); } venueStatus(); });
+    setInterval(venueStatus,5000);
+  }
+}
+initRemote();initDisplay();addEventListener("hashchange",route);route();initSync();initVenue();venueStatus();tick();
+</script>
+
+</body></html>

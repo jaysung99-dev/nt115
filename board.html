@@ -1,0 +1,1555 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>115年鄉鎮市考核 委員儀表板</title>
+<style>html,body{margin:0;height:100%;background:#EEF2F1}
+/* 115年鄉鎮市考核簡報儀表板：投影用 16:9，左公所、中簡報、右數據 */
+#board{
+  --bd-bg:#EEF2F1; --bd-ink:#17252A; --bd-ink2:#4C5F63; --bd-muted:#7A8B8E; --bd-line:#D5DEDC;
+  --bd-panel:#172023; --bd-up:#4FA3E8; --bd-down:#E8A24F; --bd-nav:#14211F; --bd-nav-ink:#DCE7E4; --bd-acc:#0E7A69; --bd-acc-soft:#D8EEE9;
+  --bd-stage:#1C2427; --bd-y114:#A7B4B6; --bd-bar:#0E7A69;
+  --bd-talk:#3FBF8F; --bd-warn:#F2B33D; --bd-over:#F0524A; --bd-ask:#4FA3E8; --bd-reply:#A98BF0;
+  --bd-font:"Microsoft JhengHei","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+  --bd-mono:"Consolas","IBM Plex Mono",ui-monospace,monospace;
+  position:fixed; inset:0; z-index:10; color-scheme:light;
+  background:var(--bd-bg); color:var(--bd-ink); font-family:var(--bd-font); font-size:clamp(13px,0.95vw,20px);
+}
+#board[hidden]{display:none!important}
+#board *{box-sizing:border-box}
+:where(#board) button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+#board button:focus-visible{outline:3px solid var(--bd-warn);outline-offset:2px}
+.bd{display:grid;height:100%;grid-template-columns:clamp(110px,8.6vw,180px) minmax(0,1fr) var(--bd-pw,31vw);grid-template-rows:clamp(52px,5.6vh,72px) minmax(0,1fr);transition:grid-template-columns .25s}
+.bd.p-wide{--bd-pw:46vw}
+.bd.p-off{--bd-pw:0px}
+.bd.p-off .bd-panel{background:var(--bd-panel);color:#E3ECEA;border-left:1px solid #26343A;overflow-y:auto;padding:1.1em 1.2em 1.4em;display:flex;flex-direction:column;gap:1.4em;min-width:0}
+
+/* 頂端列 */
+.bd-top{grid-column:1/-1;display:flex;align-items:center;gap:1.2em;padding:0 1em;background:var(--bd-nav);color:var(--bd-nav-ink);min-width:0}
+.bd-title{font-weight:700;font-size:1.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+.bd-title small{color:#93A8A4;font-weight:500;margin-left:.6em}
+.bd-cur{font-size:1.45em;font-weight:900;letter-spacing:.06em;color:#fff;white-space:nowrap}
+.bd-sp{flex:1}
+/* 計時區 */
+.bd-timer{display:flex;align-items:center;gap:.7em;padding:.25em .5em .25em .8em;border-radius:12px;background:#0D1716;border:1px solid #2A3B39;white-space:nowrap;min-height:78%}
+.bd-tphase{font-weight:700;font-size:.9em;padding:.15em .7em;border-radius:999px;color:var(--bd-ph,#93A8A4);background:color-mix(in srgb,var(--bd-ph,#93A8A4) 18%,transparent)}
+.bd-ttime{font-family:var(--bd-mono);font-weight:700;font-size:1.9em;font-variant-numeric:tabular-nums;color:var(--bd-ph,#93A8A4);line-height:1}
+.bd-ttown{font-size:.85em;color:#93A8A4}
+.bd-tstate{font-size:.8em;color:#93A8A4}
+.bd-timer.paused .bd-ttime{animation:bdblink 1.2s steps(2) infinite}
+@keyframes bdblink{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.bd-timer.paused .bd-ttime{animation:none;opacity:.6}}
+.bd-nonet{display:flex;align-items:center;gap:.6em;padding:.35em .9em;border-radius:10px;background:#5A1D1A;border:1px solid var(--bd-over);color:#FFE3E0;font-weight:700;white-space:nowrap}
+.bd-nonet b{display:inline-grid;place-items:center;width:1.4em;height:1.4em;border-radius:50%;background:var(--bd-over);color:#fff;font-size:.85em}
+.bd-nonet span{font-weight:500;color:#F6C2BD}
+
+/* 左欄公所 */
+.bd-nav{background:var(--bd-nav);display:flex;flex-direction:column;gap:2px;padding:.4em .45em .8em;overflow-y:auto;scrollbar-width:thin}
+.bd-nav button{display:flex;flex-direction:column;align-items:flex-start;gap:.05em;text-align:left;padding:.7em .8em;border-radius:9px;color:var(--bd-nav-ink);font-weight:700;font-size:1.15em;line-height:1.2}
+.bd-nav button:hover{background:#1E302D}
+.bd-nav button.cur{background:var(--bd-acc);color:#fff}
+.bd-nav button.timer-on::after{content:"計時中";font-size:.62em;font-weight:700;color:#14211F;background:var(--bd-talk);border-radius:6px;padding:0 .4em;margin-top:.15em}
+.bd-nav button.noslide::after{content:"未提供簡報";font-size:.62em;font-weight:500;color:#7F9692}
+
+/* 中間簡報 */
+.bd-stage{background:var(--bd-stage);display:grid;grid-template-rows:minmax(0,1fr) auto auto;min-width:0;min-height:0}
+.bd-slide{position:relative;display:grid;place-items:center;min-height:0;overflow:hidden}
+.bd-slide img{position:absolute;inset:.6vh .6vw;width:calc(100% - 1.2vw);height:calc(100% - 1.2vh);object-fit:contain;filter:drop-shadow(0 4px 18px rgba(0,0,0,.45));user-select:none;-webkit-user-drag:none}
+.bd-empty{color:#B9C6C4;text-align:center;line-height:1.8;font-size:1.3em}
+.bd-empty b{display:block;font-size:1.5em;color:#fff;margin-bottom:.3em}
+.bd-media{position:absolute;left:50%;top:1.4vh;transform:translateX(-50%);background:var(--bd-warn);color:#2A1C00;font-weight:700;padding:.3em .9em;border-radius:999px;font-size:.9em}
+.bd-ctrl{display:flex;align-items:center;justify-content:center;gap:.6em;padding:.45em .8em;background:#141B1D;color:#D7E1DF;flex-wrap:wrap}
+.bd-ctrl button{padding:.4em .9em;border-radius:8px;border:1px solid #33413F;color:#D7E1DF}
+.bd-ctrl button:hover{background:#22302E}
+.bd-ctrl button.on{border-color:var(--bd-talk);color:#fff}
+.bd-ctrl .bd-pg{font-family:var(--bd-mono);font-size:1.15em;min-width:7.5em;text-align:center;font-variant-numeric:tabular-nums}
+.bd-ctrl .bd-big{font-size:1.15em;padding:.35em 1.3em;background:#22302E}
+.bd-thumbs{display:flex;gap:6px;overflow-x:auto;padding:6px 8px;background:#101618;scrollbar-width:thin}
+.bd-thumbs[hidden]{display:none}
+.bd-thumbs button{flex:0 0 auto;width:clamp(90px,7vw,140px);aspect-ratio:16/9;border-radius:4px;overflow:hidden;border:2px solid transparent;position:relative;background:#2A3436}
+.bd-thumbs button.cur{border-color:var(--bd-talk)}
+.bd-thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+.bd-thumbs span{position:absolute;right:3px;bottom:2px;font-family:var(--bd-mono);font-size:11px;color:#fff;background:rgba(0,0,0,.6);padding:0 4px;border-radius:3px}
+
+/* 右欄數據 */
+.bd-panel{background:var(--bd-panel);border-left:1px solid var(--bd-line);overflow-y:auto;padding:1em 1.1em 1.4em;display:flex;flex-direction:column;gap:1em;min-width:0}
+.bd-ph{display:flex;align-items:baseline;justify-content:space-between;gap:.6em;flex-wrap:wrap}
+.bd-ph h2{margin:0;font-size:1.5em;font-weight:900;letter-spacing:.04em;color:#fff}
+.bd-ph span{color:#93A4A6;font-size:.9em}
+.bd-sec{font-size:.9em;font-weight:700;color:#A9BBBD;letter-spacing:.06em;margin:0 0 .5em}
+.bd-sec em{font-style:normal;font-weight:500;color:var(--bd-muted);letter-spacing:0}
+.bd-tiles{display:grid;grid-template-columns:1fr 1fr;gap:.6em}
+.p-wide .bd-tiles{grid-template-columns:repeat(4,1fr)}
+.bd-tile{border:1px solid var(--bd-line);border-radius:12px;padding:.65em .75em;display:grid;gap:.15em;background:#FAFCFB;cursor:pointer;text-align:left}
+.bd-tile.sel{border-color:var(--bd-acc);box-shadow:inset 0 0 0 1px var(--bd-acc);background:var(--bd-acc-soft)}
+.bd-tile .k{font-size:.85em;color:var(--bd-ink2);font-weight:700}
+.bd-tile .v{font-family:var(--bd-mono);font-size:1.55em;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.bd-tile .v small{font-family:var(--bd-font);font-size:.5em;color:var(--bd-muted);font-weight:500;margin-left:.2em}
+.bd-tile .d{font-size:.82em;color:var(--bd-ink2);font-variant-numeric:tabular-nums}
+.bd-tile .c{font-size:.75em;color:var(--bd-muted)}
+.bd-tbl{width:100%;border-collapse:collapse;font-size:.95em;font-variant-numeric:tabular-nums}
+.bd-tbl th,.bd-tbl td{padding:.5em .3em;border-bottom:1px solid #2C3B3F;text-align:right;white-space:nowrap}
+.bd-tbl th{color:#A9BBBD;font-weight:700;background:#1E2A2D;font-size:.85em;line-height:1.3;vertical-align:bottom}
+.bd-tbl td:first-child,.bd-tbl th:first-child{text-align:left}
+.bd-tbl td{color:#EEF3F2}
+.bd-tbl td:nth-child(4),.bd-tbl td:nth-child(5){font-weight:700}
+.bd-chart{width:100%;max-width:620px;height:auto;display:block;margin:0 auto}
+.bd-chart text{font-family:var(--bd-font);fill:#C9D6D4}
+.bd-chart .axis{fill:#7F9195}
+.bd-chart .val{fill:#EEF3F2;font-weight:700;font-family:var(--bd-mono)}
+.bd-chart .bar{transition:opacity .15s}
+.bd-chart path:hover{opacity:.8}
+.bd-legend i.tick{width:3px;height:1.1em;border-radius:1px;background:#F4F7F6;vertical-align:-.2em}
+.bd-legend{display:flex;gap:1.1em;font-size:1em;color:#A9BBBD;margin-top:.3em;flex-wrap:wrap}
+.bd-legend i{display:inline-block;width:.9em;height:.9em;border-radius:3px;margin-right:.35em;vertical-align:-.1em}
+.bd-src{font-size:.75em;color:#7F9195;line-height:1.6;margin-top:auto}
+.bd-tip{position:fixed;pointer-events:none;background:#17252A;color:#fff;padding:.35em .6em;border-radius:6px;font-size:.85em;z-index:20;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bd-tip[hidden]{display:none}
+.bd-help{position:fixed;inset:0;background:rgba(10,16,17,.75);display:grid;place-items:center;z-index:30}
+.bd-help[hidden]{display:none}
+.bd-help div{background:#fff;color:var(--bd-ink);border-radius:14px;padding:1.4em 1.8em;max-width:640px;line-height:1.9}
+.bd-help h3{margin:0 0 .4em}
+.bd-help kbd{font-family:var(--bd-mono);background:#EEF2F1;border:1px solid var(--bd-line);border-radius:5px;padding:0 .4em}
+.bd-pick{margin-top:1em;font-size:1.05em!important;font-weight:700;padding:.7em 1.6em!important;border-radius:12px!important;background:var(--bd-talk)!important;color:#06231A!important}
+.bd-empty small{color:#8FA19F;font-size:.75em}
+.bd-toast{position:fixed;left:50%;top:12vh;transform:translateX(-50%);background:rgba(10,16,17,.92);color:#fff;padding:.7em 1.4em;border-radius:12px;font-size:1.15em;font-weight:700;z-index:40;border:1px solid #33413F}
+.bd-toast[hidden]{display:none}
+</style>
+</head>
+<body>
+<section id="board"></section>
+<script>
+// 資料來源：115年鄉鎮市考核_各鄉鎮數據分析.docx（環境部一般廢棄物管理資訊系統 QEW1，本計畫彙整）
+window.BOARD_DATA={
+ "towns": [
+  {
+   "name": "鹿谷鄉",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 1539.36,
+     "y115": 1390.38,
+     "diff": "-148.98",
+     "rate": "-9.68%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 1902.56,
+     "y115": 1527.92,
+     "diff": "-374.64",
+     "rate": "-19.69%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 29.05,
+     "y115": 34.76,
+     "diff": "+5.71",
+     "rate": "+19.66%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 2.54,
+     "y115": 2.08,
+     "diff": "-0.46",
+     "rate": "-18.11%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      2167.96,
+      2123.93,
+      17.76,
+      1.4
+     ],
+     [
+      2321.08,
+      2202.46,
+      9.16,
+      1.88
+     ],
+     [
+      2179.49,
+      2162.04,
+      6.21,
+      1.83
+     ],
+     [
+      2299.15,
+      2482.79,
+      19.04,
+      3.15
+     ],
+     [
+      1975.44,
+      2575.58,
+      40.68,
+      3.39
+     ]
+    ]
+   },
+   "time": "09:10",
+   "code": "luku"
+  },
+  {
+   "name": "集集鎮",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 1273.19,
+     "y115": 1258.32,
+     "diff": "-14.87",
+     "rate": "-1.17%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 1925.93,
+     "y115": 2093.12,
+     "diff": "+167.19",
+     "rate": "+8.68%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 82.7,
+     "y115": 47.31,
+     "diff": "-35.39",
+     "rate": "-42.79%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 226.77,
+     "y115": 205.48,
+     "diff": "-21.29",
+     "rate": "-9.39%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      1738.17,
+      2053.51,
+      124.04,
+      138.13
+     ],
+     [
+      1839.1,
+      2407.84,
+      100.96,
+      99.15
+     ],
+     [
+      1731.6,
+      2560.3,
+      117.84,
+      34.21
+     ],
+     [
+      1763.1,
+      2634.27,
+      115.7,
+      2.49
+     ],
+     [
+      1638.34,
+      2747.67,
+      116.43,
+      289.52
+     ]
+    ]
+   },
+   "time": "09:35",
+   "code": "jiji"
+  },
+  {
+   "name": "名間鄉",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 5373.51,
+     "y115": 5667.13,
+     "diff": "+293.62",
+     "rate": "+5.46%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 4756.7,
+     "y115": 4328.49,
+     "diff": "-428.21",
+     "rate": "-9.00%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 9.13,
+     "y115": 10.65,
+     "diff": "+1.52",
+     "rate": "+16.65%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 119.67,
+     "y115": 74.86,
+     "diff": "-44.81",
+     "rate": "-37.44%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      7960.87,
+      7059.02,
+      42.9,
+      127.58
+     ],
+     [
+      6716.6,
+      8246.17,
+      25.92,
+      151.25
+     ],
+     [
+      7106.85,
+      10408.54,
+      29.45,
+      116.25
+     ],
+     [
+      7437.75,
+      9025.88,
+      18.01,
+      174.61
+     ],
+     [
+      7058.37,
+      7228.78,
+      17.69,
+      140.14
+     ]
+    ]
+   },
+   "time": "10:00",
+   "code": "mingjian"
+  },
+  {
+   "name": "南投市",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 16501.72,
+     "y115": 16340.38,
+     "diff": "-161.34",
+     "rate": "-0.98%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 24666.69,
+     "y115": 24088.99,
+     "diff": "-577.70",
+     "rate": "-2.34%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 725.0,
+     "y115": 480.1,
+     "diff": "-244.90",
+     "rate": "-33.78%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 1172.2,
+     "y115": 991.75,
+     "diff": "-180.45",
+     "rate": "-15.39%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      20826.81,
+      24116.53,
+      1474.87,
+      374.19
+     ],
+     [
+      22204.71,
+      25274.05,
+      1153.11,
+      1073.89
+     ],
+     [
+      21847.92,
+      29312.25,
+      906.22,
+      1261.37
+     ],
+     [
+      22339.47,
+      31615.35,
+      977.86,
+      1794.85
+     ],
+     [
+      21673.56,
+      33481.1,
+      1288.22,
+      1535.9
+     ]
+    ]
+   },
+   "time": "10:35",
+   "code": "nantou"
+  },
+  {
+   "name": "仁愛鄉",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 2690.31,
+     "y115": 2897.54,
+     "diff": "+207.23",
+     "rate": "+7.70%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 2943.87,
+     "y115": 3799.3,
+     "diff": "+855.43",
+     "rate": "+29.06%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 237.9,
+     "y115": 245.5,
+     "diff": "+7.60",
+     "rate": "+3.19%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 6.45,
+     "y115": 2.9,
+     "diff": "-3.55",
+     "rate": "-55.04%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      3909.5,
+      5250.55,
+      498.54,
+      0.0
+     ],
+     [
+      4469.96,
+      5858.44,
+      458.9,
+      1.4
+     ],
+     [
+      4223.5,
+      7304.35,
+      387.25,
+      3.43
+     ],
+     [
+      3872.79,
+      5080.16,
+      339.22,
+      3.78
+     ],
+     [
+      3669.2,
+      4388.08,
+      326.91,
+      6.71
+     ]
+    ]
+   },
+   "time": "11:00",
+   "code": "renai"
+  },
+  {
+   "name": "水里鄉",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 2947.77,
+     "y115": 1628.44,
+     "diff": "-1,319.33",
+     "rate": "-44.76%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 2358.28,
+     "y115": 2039.49,
+     "diff": "-318.79",
+     "rate": "-13.52%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 100.24,
+     "y115": 34.44,
+     "diff": "-65.80",
+     "rate": "-65.64%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 16.3,
+     "y115": 11.99,
+     "diff": "-4.31",
+     "rate": "-26.44%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      2551.8,
+      3253.37,
+      72.35,
+      3.05
+     ],
+     [
+      2661.27,
+      3545.74,
+      89.69,
+      107.81
+     ],
+     [
+      2293.4,
+      5472.92,
+      95.99,
+      47.63
+     ],
+     [
+      3171.17,
+      3514.76,
+      103.34,
+      59.46
+     ],
+     [
+      3787.96,
+      2945.02,
+      115.34,
+      17.51
+     ]
+    ]
+   },
+   "time": "11:25",
+   "code": "shuili"
+  },
+  {
+   "name": "埔里鎮",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 13311.26,
+     "y115": 13695.25,
+     "diff": "+383.99",
+     "rate": "+2.88%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 19229.28,
+     "y115": 17693.43,
+     "diff": "-1,535.85",
+     "rate": "-7.99%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 1178.52,
+     "y115": 0.0,
+     "diff": "-1,178.52",
+     "rate": "-100.00%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 119.02,
+     "y115": 87.19,
+     "diff": "-31.83",
+     "rate": "-26.74%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      16209.29,
+      21310.22,
+      1641.71,
+      196.85
+     ],
+     [
+      15732.36,
+      22797.85,
+      1649.1,
+      224.01
+     ],
+     [
+      17706.64,
+      24988.54,
+      1587.21,
+      158.0
+     ],
+     [
+      16772.06,
+      25915.27,
+      1602.93,
+      307.73
+     ],
+     [
+      17257.11,
+      26463.64,
+      1269.38,
+      135.34
+     ]
+    ]
+   },
+   "time": "13:40",
+   "code": "puli"
+  },
+  {
+   "name": "竹山鎮",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 5765.57,
+     "y115": 4900.83,
+     "diff": "-864.74",
+     "rate": "-15.00%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 9376.22,
+     "y115": 8495.94,
+     "diff": "-880.28",
+     "rate": "-9.39%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 1179.13,
+     "y115": 1262.77,
+     "diff": "+83.64",
+     "rate": "+7.09%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 220.63,
+     "y115": 193.42,
+     "diff": "-27.21",
+     "rate": "-12.33%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      8605.96,
+      11809.61,
+      1356.6,
+      591.52
+     ],
+     [
+      8895.36,
+      12734.24,
+      1226.93,
+      541.15
+     ],
+     [
+      7877.9,
+      12511.77,
+      1272.75,
+      730.09
+     ],
+     [
+      8222.4,
+      11954.47,
+      1343.93,
+      432.58
+     ],
+     [
+      7230.24,
+      12831.17,
+      1600.47,
+      286.9
+     ]
+    ]
+   },
+   "time": "14:05",
+   "code": "zhushan"
+  },
+  {
+   "name": "中寮鄉",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 1271.99,
+     "y115": 1254.38,
+     "diff": "-17.61",
+     "rate": "-1.38%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 1561.38,
+     "y115": 1561.22,
+     "diff": "-0.16",
+     "rate": "-0.01%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 7.52,
+     "y115": 6.08,
+     "diff": "-1.44",
+     "rate": "-19.15%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 1.47,
+     "y115": 2.45,
+     "diff": "+0.98",
+     "rate": "+66.67%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      1893.18,
+      2159.97,
+      10.77,
+      1.71
+     ],
+     [
+      1916.04,
+      1956.94,
+      10.86,
+      2.73
+     ],
+     [
+      1912.46,
+      2218.69,
+      9.37,
+      3.0
+     ],
+     [
+      1895.33,
+      2225.88,
+      11.47,
+      2.31
+     ],
+     [
+      1644.4,
+      2310.7,
+      9.99,
+      1.83
+     ]
+    ]
+   },
+   "time": "14:30",
+   "code": "zhongliao"
+  },
+  {
+   "name": "魚池鄉",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 2176.83,
+     "y115": 2148.53,
+     "diff": "-28.30",
+     "rate": "-1.30%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 2688.83,
+     "y115": 2556.7,
+     "diff": "-132.13",
+     "rate": "-4.91%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 237.41,
+     "y115": 294.68,
+     "diff": "+57.27",
+     "rate": "+24.12%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 3.72,
+     "y115": 6.58,
+     "diff": "+2.86",
+     "rate": "+76.88%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      3066.65,
+      2696.86,
+      417.25,
+      6.92
+     ],
+     [
+      3418.32,
+      3589.83,
+      482.4,
+      12.6
+     ],
+     [
+      3510.3,
+      3956.45,
+      440.2,
+      5.65
+     ],
+     [
+      3325.72,
+      3936.68,
+      352.8,
+      9.42
+     ],
+     [
+      2860.71,
+      3853.39,
+      318.58,
+      5.09
+     ]
+    ]
+   },
+   "time": "15:10",
+   "code": "yuchi"
+  },
+  {
+   "name": "信義鄉",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 1998.46,
+     "y115": 1722.91,
+     "diff": "-275.55",
+     "rate": "-13.79%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 1740.49,
+     "y115": 1432.52,
+     "diff": "-307.97",
+     "rate": "-17.69%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 4.7,
+     "y115": 1.9,
+     "diff": "-2.80",
+     "rate": "-59.57%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 0.0,
+     "y115": 0.0,
+     "diff": "0.00",
+     "rate": "-"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      2688.18,
+      3150.18,
+      3.51,
+      7.63
+     ],
+     [
+      2580.61,
+      3198.55,
+      1.93,
+      6.02
+     ],
+     [
+      2607.76,
+      3426.43,
+      2.09,
+      4.67
+     ],
+     [
+      2586.66,
+      2636.54,
+      0.8,
+      2.15
+     ],
+     [
+      2704.6,
+      2532.81,
+      5.16,
+      0.0
+     ]
+    ]
+   },
+   "time": "15:35",
+   "code": "xinyi"
+  },
+  {
+   "name": "草屯鎮",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 14636.96,
+     "y115": 14876.97,
+     "diff": "+240.01",
+     "rate": "+1.64%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 16788.12,
+     "y115": 14625.64,
+     "diff": "-2,162.48",
+     "rate": "-12.88%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 447.95,
+     "y115": 298.2,
+     "diff": "-149.75",
+     "rate": "-33.43%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 615.03,
+     "y115": 805.02,
+     "diff": "+189.99",
+     "rate": "+30.89%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      21520.49,
+      19407.6,
+      750.83,
+      557.16
+     ],
+     [
+      21323.64,
+      19564.47,
+      669.76,
+      828.4
+     ],
+     [
+      21588.6,
+      18520.1,
+      630.23,
+      783.22
+     ],
+     [
+      20805.81,
+      20844.93,
+      610.86,
+      958.7
+     ],
+     [
+      19453.27,
+      23148.84,
+      544.34,
+      885.94
+     ]
+    ]
+   },
+   "time": "16:00",
+   "code": "caotun"
+  },
+  {
+   "name": "國姓鄉",
+   "cmp": [
+    {
+     "item": "垃圾清運量",
+     "y114": 1024.28,
+     "y115": 888.65,
+     "diff": "-135.63",
+     "rate": "-13.24%"
+    },
+    {
+     "item": "資源回收量",
+     "y114": 1612.18,
+     "y115": 1621.73,
+     "diff": "+9.55",
+     "rate": "+0.59%"
+    },
+    {
+     "item": "廚餘回收量",
+     "y114": 138.51,
+     "y115": 129.8,
+     "diff": "-8.71",
+     "rate": "-6.29%"
+    },
+    {
+     "item": "巨大垃圾再利用量",
+     "y114": 28.94,
+     "y115": 36.7,
+     "diff": "+7.76",
+     "rate": "+26.81%"
+    }
+   ],
+   "hist": {
+    "years": [
+     "110年",
+     "111年",
+     "112年",
+     "113年",
+     "114年"
+    ],
+    "items": [
+     "垃圾清運量",
+     "資源回收量",
+     "廚餘回收量",
+     "巨大垃圾再利用量"
+    ],
+    "values": [
+     [
+      1363.73,
+      1545.71,
+      154.51,
+      25.56
+     ],
+     [
+      1299.44,
+      1843.27,
+      191.63,
+      22.44
+     ],
+     [
+      1224.44,
+      2165.12,
+      166.48,
+      17.92
+     ],
+     [
+      1351.76,
+      2195.33,
+      170.47,
+      0.0
+     ],
+     [
+      1314.02,
+      2207.82,
+      180.6,
+      35.58
+     ]
+    ]
+   },
+   "time": "16:25",
+   "code": "guoxing"
+  }
+ ],
+ "county": {
+  "垃圾清運量": "-1.37%",
+  "資源回收量": "-6.24%",
+  "廚餘回收量": "-34.99%",
+  "巨大垃圾再利用量": "-4.44%"
+ },
+ "source": "資料來源：環境部一般廢棄物管理資訊系統（QEW1垃圾清運資源回收率狀況表），本計畫彙整。"
+};
+
+</script>
+<script>
+// 各公所簡報頁數（由 ET-1512 以 PowerPoint 逐頁轉檔，2026-11-23）；null 表示未提供簡報
+window.BOARD_SLIDES={
+ "鹿谷鄉":{"pages":36,"media":[]},"集集鎮":{"pages":12,"media":[]},"名間鄉":{"pages":22,"media":[]},
+ "南投市":{"pages":22,"media":[]},"水里鄉":{"pages":16,"media":[]},"埔里鎮":{"pages":36,"media":[]},
+ "竹山鎮":{"pages":45,"media":[29,41]},"中寮鄉":{"pages":38,"media":[]},"魚池鄉":{"pages":13,"media":[]},
+ "草屯鎮":{"pages":37,"media":[]},"國姓鄉":{"pages":35,"media":[]}
+};
+
+</script>
+<script>
+/* 115年鄉鎮市考核簡報儀表板
+ * 同一份程式兩種用法：
+ *  1. 線上版：掛在「鄉鎮市考核簡報計時器」網頁的 #board，讀取同一份計時狀態（S、remain()、synced）。
+ *  2. 離線版：本機資料夾雙擊「儀表板.html」，沒有計時系統 → 顯示「無網路，時間依現場計時為準」。
+ * 計時器只讀不寫：儀表板不會改動計時狀態。
+ */
+(function(){
+"use strict";
+const D=window.BOARD_DATA; if(!D) return;
+const SL=window.BOARD_SLIDES||{};               // {鄉鎮:{pages:N,media:[頁]}}
+const ONLINE=!!window.BOARD_ONLINE;
+const SOLO=!!window.BOARD_SOLO;               // 獨立網頁版（不掛在計時器內，免登入）              // 線上版圖片路徑用英文代碼
+const BASE=window.BOARD_SLIDE_BASE||"slides/";
+const ITEMS=["垃圾清運量","資源回收量","廚餘回收量","巨大垃圾再利用量"];
+const PH_COLORS=["--bd-talk","--bd-ask","--bd-reply"];
+const hasTimer=()=>typeof S!=="undefined"&&typeof remain==="function"&&typeof PHASES!=="undefined";
+const LS={get(k,d){try{const v=localStorage.getItem("board."+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+          set(k,v){try{localStorage.setItem("board."+k,JSON.stringify(v))}catch(e){}}};
+
+let root=document.getElementById("board");
+if(!root){root=document.createElement("section");root.id="board";document.body.appendChild(root);}
+
+const st={town:LS.get("town",0),page:1,pages:0,panel:LS.get("panel","on"),
+          thumbs:false,lastTimerTown:null};
+if(!(st.town>=0&&st.town<D.towns.length)) st.town=0;
+
+const fmtN=v=>v==null?"—":v.toLocaleString("zh-TW",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pad3=n=>String(n).padStart(3,"0");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const slideDir=t=>ONLINE?t.code:t.name;
+// 線上版：簡報圖片不上傳雲端，開啟時由使用者選取本機「slides」資料夾，以本機檔案顯示
+const BLOBS={}; let blobLoaded=false;
+const slideSrc=(t,n)=>blobLoaded?(BLOBS[t.name+"/"+pad3(n)]||""):BASE+encodeURIComponent(slideDir(t))+"/"+pad3(n)+".jpg";
+const picker=document.createElement("input"); picker.type="file"; picker.multiple=true; picker.accept="image/jpeg";
+picker.setAttribute("webkitdirectory",""); picker.hidden=true;
+picker.onchange=async()=>{ const names=new Set(D.towns.map(t=>t.name)); const list=[];
+  for(const f of picker.files){ const parts=(f.webkitRelativePath||f.name).split("/"); if(parts.length<2) continue;
+    const town=parts[parts.length-2], m=/^(\d{3})\.jpe?g$/i.exec(parts[parts.length-1]);
+    if(m&&names.has(town)) list.push([town+"/"+m[1],f]); }
+  if(!list.length){ alert("沒有找到簡報圖片。請選「115年鄉鎮市考核儀表板」裡的 slides 資料夾。"); return; }
+  // 先把圖片讀進記憶體，之後就不再依賴原檔（OneDrive 同步或資料夾變動都不影響播放）
+  let done=0; for(const [key,f] of list){ try{ const buf=await f.arrayBuffer(); BLOBS[key]=URL.createObjectURL(new Blob([buf],{type:"image/jpeg"})); }catch(e){}
+    if(++done%20===0||done===list.length){ const el=document.getElementById("bdPick"); if(el) el.textContent=`讀取中 ${done} / ${list.length}`; } }
+  blobLoaded=true; for(const k in probeCache) delete probeCache[k]; selectTown(st.town,false); };
+document.body.appendChild(picker);
+function needPick(){ return false; } // 線上版簡報圖片已隨網頁發布，不需再選資料夾
+
+root.innerHTML=`
+<div class="bd" id="bdGrid">
+  <header class="bd-top">
+    <div class="bd-title">115年鄉鎮市資源回收暨源頭減量考核<small>簡報儀表板</small></div>
+    <div class="bd-cur" id="bdCur"></div>
+    <div class="bd-sp"></div>
+  </header>
+  <nav class="bd-nav" id="bdNav" aria-label="公所"></nav>
+  <main class="bd-stage">
+    <div class="bd-slide" id="bdSlide"></div>
+    <div class="bd-ctrl">
+      <button type="button" id="bdPrev" class="bd-big" aria-label="上一頁">◀</button>
+      <span class="bd-pg" id="bdPg">—</span>
+      <button type="button" id="bdNext" class="bd-big" aria-label="下一頁">▶</button>
+      <button type="button" id="bdThumbBtn">縮圖</button>
+      <button type="button" id="bdPanelBtn">數據欄</button>
+      <button type="button" id="bdFsBtn">全螢幕</button>
+      <button type="button" id="bdHelpBtn">操作說明</button>
+    </div>
+    <div class="bd-thumbs" id="bdThumbs" hidden></div>
+  </main>
+  <aside class="bd-panel" id="bdPanel" aria-label="公所數據"></aside>
+</div>
+<div class="bd-tip" id="bdTip" hidden></div>
+<div class="bd-toast" id="bdToast" role="status" hidden></div>
+<div class="bd-help" id="bdHelp" hidden><div>
+  <h3>操作說明</h3>
+  <div>翻頁：<kbd>→</kbd> <kbd>←</kbd>、<kbd>PageDown</kbd> <kbd>PageUp</kbd>（簡報筆可直接用）、<kbd>空白鍵</kbd>、滑鼠滾輪</div>
+  <div>第一頁／最後一頁：<kbd>Home</kbd> <kbd>End</kbd></div>
+  <div>數據欄：<kbd>D</kbd> 切換「一般／放大／隱藏」；縮圖：<kbd>T</kbd>；全螢幕：<kbd>F</kbd>（全螢幕時長按 <kbd>Esc</kbd> 才會離開）</div>
+  <div>切換公所：點左欄公所名稱</div>
+  <div style="margin-top:.6em;color:#4C5F63">點任一處關閉</div>
+</div></div>`;
+const $=id=>document.getElementById(id);
+const grid=$("bdGrid"),nav=$("bdNav"),slideBox=$("bdSlide"),pg=$("bdPg"),thumbs=$("bdThumbs"),panel=$("bdPanel"),tip=$("bdTip");
+
+/* ---- 左欄 ---- */
+nav.innerHTML=D.towns.map((t,i)=>`<button type="button" data-i="${i}">${esc(t.name)}</button>`).join("");
+nav.querySelectorAll("button").forEach(b=>b.onclick=()=>selectTown(+b.dataset.i,true));
+
+/* ---- 簡報頁數：有清單用清單，沒有就逐張探測（晚交的簡報放進資料夾即可） ---- */
+const probeCache={};
+function countPages(t){
+  if(needPick()) return Promise.resolve(-1);
+  if(blobLoaded){ let n=0; while(BLOBS[t.name+"/"+pad3(n+1)]) n++; return Promise.resolve(n); }
+  const m=SL[t.name]; if(m&&m.pages) return Promise.resolve(m.pages);
+  if(probeCache[t.name]!=null) return Promise.resolve(probeCache[t.name]);
+  return new Promise(res=>{
+    let n=0; const next=()=>{const im=new Image(); im.onload=()=>{n++; if(n>=300) done(); else next();}; im.onerror=done; im.src=slideSrc(t,n+1);};
+    const done=()=>{probeCache[t.name]=n; res(n);}; next();
+  });
+}
+let loadToken=0;
+function selectTown(i,manual){
+  st.town=i; LS.set("town",i); st.page=1; st.pages=0;
+  const t=D.towns[i], tok=++loadToken;
+  $("bdCur").textContent=t.name;
+  nav.querySelectorAll("button").forEach((b,k)=>b.classList.toggle("cur",k===i));
+  nav.children[i]?.scrollIntoView({block:"nearest"});
+  slideBox.innerHTML=`<div class="bd-empty">載入簡報中…</div>`; pg.textContent="—"; thumbs.innerHTML="";
+  renderPanel();
+  countPages(t).then(n=>{ if(tok!==loadToken) return; st.pages=n;
+    if(n===-1){ slideBox.innerHTML=`<div class="bd-empty"><b>載入簡報</b>請點下方按鈕，選取 ET-1512 上<br>「鄉鎮市考核\\115年鄉鎮市考核儀表板\\slides」資料夾<br><button type="button" class="bd-pick" id="bdPick">選取 slides 資料夾</button><br><small>簡報圖片只在這台電腦讀取，不會上傳</small></div>`; pg.textContent="—"; $("bdPick").onclick=()=>picker.click(); return; }
+    nav.children[i].classList.toggle("noslide",n===0);
+    if(n===0){ try{ window.dispatchEvent(new CustomEvent("board:nav",{detail:{town:i,name:t.name,page:0,pages:0}})); }catch(e){}
+      slideBox.innerHTML=`<div class="bd-empty"><b>${esc(t.name)}</b>本所簡報尚未提供<br>右側數據可照常查看</div>`; pg.textContent="0 / 0"; return; }
+    buildThumbs(); showPage(1);
+    for(let k=1;k<=Math.min(n,120);k++){const im=new Image(); im.decoding="async"; im.src=slideSrc(t,k);} // 預先載入整份
+  });
+}
+window.BOARD_API={select:i=>{ if(Number.isInteger(i)&&i>=0&&i<D.towns.length) selectTown(i,false); },cur:()=>({town:st.town,page:st.page,pages:st.pages})};
+function showPage(n){
+  if(!st.pages) return; n=Math.max(1,Math.min(st.pages,n)); st.page=n;
+  const t=D.towns[st.town], media=(SL[t.name]?.media||[]).includes(n);
+  slideBox.innerHTML=`<img alt="${esc(t.name)}簡報第${n}頁" src="${slideSrc(t,n)}">`+(media?`<div class="bd-media">此頁含影片或聲音，請改用原簡報播放</div>`:"");
+  pg.textContent=`${n} / ${st.pages}`;
+  try{ window.dispatchEvent(new CustomEvent("board:nav",{detail:{town:st.town,name:t.name,page:n,pages:st.pages}})); }catch(e){}
+  thumbs.querySelectorAll("button").forEach((b,k)=>b.classList.toggle("cur",k+1===n));
+  if(!thumbs.hidden) thumbs.children[n-1]?.scrollIntoView({inline:"nearest",block:"nearest"});
+}
+function buildThumbs(){
+  const t=D.towns[st.town];
+  thumbs.innerHTML=Array.from({length:st.pages},(_,k)=>`<button type="button" data-p="${k+1}" aria-label="第${k+1}頁"><img loading="lazy" alt="" src="${slideSrc(t,k+1)}"><span>${k+1}</span></button>`).join("");
+  thumbs.querySelectorAll("button").forEach(b=>b.onclick=()=>showPage(+b.dataset.p));
+}
+$("bdPrev").onclick=()=>showPage(st.page-1);
+$("bdNext").onclick=()=>showPage(st.page+1);
+$("bdThumbBtn").onclick=()=>toggleThumbs();
+$("bdPanelBtn").onclick=()=>cyclePanel();
+$("bdFsBtn").onclick=()=>toggleFs();
+$("bdHelpBtn").onclick=()=>{$("bdHelp").hidden=false};
+$("bdHelp").onclick=()=>{$("bdHelp").hidden=true};
+function toggleThumbs(){st.thumbs=!st.thumbs; thumbs.hidden=!st.thumbs; $("bdThumbBtn").classList.toggle("on",st.thumbs); if(st.thumbs) showPage(st.page);}
+function cyclePanel(){st.panel={on:"wide",wide:"off",off:"on"}[st.panel]||"on"; LS.set("panel",st.panel); applyPanel();}
+function applyPanel(){grid.classList.toggle("p-wide",st.panel==="wide"); grid.classList.toggle("p-off",st.panel==="off");
+  $("bdPanelBtn").textContent={on:"數據欄：一般",wide:"數據欄：放大",off:"數據欄：隱藏"}[st.panel]; $("bdPanelBtn").classList.toggle("on",st.panel!=="off");}
+/* 全螢幕：只能從按鈕或 F 進入；離開需長按 Esc（瀏覽器支援鍵盤鎖定時），避免誤觸跳回 */
+let fsLocked=false, toastT=0;
+function toast(msg,ms){ const el=$("bdToast"); el.textContent=msg; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{el.hidden=true},ms||3500); }
+async function toggleFs(){
+  if(document.fullscreenElement){ toast(fsLocked?"長按 Esc 鍵即可離開全螢幕":"按 Esc 鍵即可離開全螢幕"); return; }
+  try{ await document.documentElement.requestFullscreen({navigationUI:"hide"}); }
+  catch(e){ toast("這個頁面無法自動全螢幕，請按鍵盤 F11",5000); return; }
+  fsLocked=false;
+  try{ if(navigator.keyboard&&navigator.keyboard.lock){ await navigator.keyboard.lock(["Escape"]); fsLocked=true; } }catch(e){}
+  toast(fsLocked?"已進入全螢幕，長按 Esc 鍵才會離開":"已進入全螢幕，按 Esc 鍵離開");
+}
+document.addEventListener("fullscreenchange",()=>{ const on=!!document.fullscreenElement; $("bdFsBtn").classList.toggle("on",on); $("bdFsBtn").textContent=on?"全螢幕中":"全螢幕";
+  if(!on){ fsLocked=false; try{navigator.keyboard&&navigator.keyboard.unlock&&navigator.keyboard.unlock()}catch(e){} } });
+let wheelT=0;
+slideBox.addEventListener("wheel",e=>{e.preventDefault(); const now=Date.now(); if(now-wheelT<350) return; wheelT=now; showPage(st.page+(e.deltaY>0?1:-1));},{passive:false});
+document.addEventListener("keydown",e=>{
+  if(root.hidden||e.ctrlKey||e.altKey||e.metaKey) return;
+  const k=e.key;
+  if(["ArrowRight","PageDown"," ","Enter","ArrowDown"].includes(k)){e.preventDefault();showPage(st.page+1);}
+  else if(["ArrowLeft","PageUp","Backspace","ArrowUp"].includes(k)){e.preventDefault();showPage(st.page-1);}
+  else if(k==="Home"){e.preventDefault();showPage(1);}
+  else if(k==="End"){e.preventDefault();showPage(st.pages);}
+  else if(k==="d"||k==="D") cyclePanel();
+  else if(k==="t"||k==="T") toggleThumbs();
+  else if(k==="f"||k==="F") toggleFs();
+  else if(k==="Escape") $("bdHelp").hidden=true;
+});
+
+/* ---- 右欄數據（只呈現現況，不下結論） ---- */
+function renderPanel(){
+  const t=D.towns[st.town];
+  const rows=t.cmp.map(c=>`<tr><td>${esc(c.item)}</td><td>${fmtN(c.y114)}</td><td>${fmtN(c.y115)}</td><td>${esc(c.diff)}</td><td>${esc(c.rate)}</td></tr>`).join("");
+  panel.innerHTML=`
+    <div class="bd-ph"><h2>${esc(t.name)}</h2><span>115年與114年1至9月同期比較</span></div>
+    <div><div class="bd-sec">同期增減（公噸）</div>
+      <table class="bd-tbl"><thead><tr><th>項目</th><th>114年<br>1-9月</th><th>115年<br>1-9月</th><th>增減量</th><th>增減率</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div><div class="bd-sec">增減率</div>${rateChart(t)}</div>
+    <div class="bd-src">${esc(D.source)}</div>`;
+  panel.querySelectorAll("[data-tip]").forEach(el=>{
+    el.addEventListener("mousemove",e=>{tip.hidden=false; tip.textContent=el.dataset.tip; tip.style.left=(e.clientX+14)+"px"; tip.style.top=(e.clientY-10)+"px";});
+    el.addEventListener("mouseleave",()=>{tip.hidden=true});
+  });
+}
+// 增減率橫條圖：以 0 為中線，增加往右、減少往左；白色短線為全縣同期增減率
+function rateChart(t){
+  const pr=s=>{const v=parseFloat(String(s).replace(/[%+,]/g,"")); return isFinite(v)?v:null;};
+  const items=t.cmp.map(c=>({name:c.item,v:pr(c.rate),txt:c.rate,diff:c.diff,cty:pr(D.county[c.item]),ctxt:D.county[c.item]}));
+  const lim=Math.max(10,...items.flatMap(o=>[Math.abs(o.v||0),Math.abs(o.cty||0)]))*1.08;
+  const W=480,L=172,R=12,rowH=54,T=8,H=T+rowH*items.length+30,iw=W-L-R,cx=L+iw/2,sc=v=>v/lim*(iw/2);
+  let g=`<line x1="${cx}" x2="${cx}" y1="${T-2}" y2="${T+rowH*items.length}" stroke="#5B6B6E" stroke-width="1"/>`;
+  items.forEach((o,k)=>{
+    const y=T+rowH*k, by=y+13, bh=26;
+    g+=`<text class="lab" x="${L-10}" y="${by+bh/2+6}" text-anchor="end" font-size="18">${esc(o.name)}</text>`;
+    if(o.v!=null&&o.v!==0){
+      const w=Math.max(2,Math.abs(sc(o.v))), x=o.v>0?cx:cx-w, col=o.v>0?"var(--bd-up)":"var(--bd-down)";
+      const r=Math.min(4,w/2), path=o.v>0
+        ?`M${x},${by}H${x+w-r}Q${x+w},${by} ${x+w},${by+r}V${by+bh-r}Q${x+w},${by+bh} ${x+w-r},${by+bh}H${x}Z`
+        :`M${x+w},${by}H${x+r}Q${x},${by} ${x},${by+r}V${by+bh-r}Q${x},${by+bh} ${x+r},${by+bh}H${x+w}Z`;
+      g+=`<path d="${path}" fill="${col}" data-tip="${esc(o.name)}：${esc(o.txt)}（${esc(o.diff)} 公噸）"/>`;
+      const lx=o.v>0?x+w+6:x-6; const anchor=o.v>0?"start":"end";
+      const inside=(o.v>0&&lx>W-R-76)||(o.v<0&&lx<L+76);
+      g+=`<text class="val" x="${inside?(o.v>0?x+w-6:x+6):lx}" y="${by+bh/2+6}" text-anchor="${inside?(o.v>0?"end":"start"):anchor}" font-size="17"${inside?' style="fill:#0B1214"':""}>${esc(o.txt)}</text>`;
+    }else{
+      g+=`<text class="val" x="${cx+6}" y="${by+bh/2+6}" font-size="17">${o.v===0?"0.00%":"—"}</text>`;
+    }
+    if(o.cty!=null){ const cxp=cx+sc(o.cty); g+=`<line x1="${cxp}" x2="${cxp}" y1="${by-5}" y2="${by+bh+5}" stroke="#F4F7F6" stroke-width="2.5" data-tip="全縣同期 ${esc(o.ctxt)}"/>`; }
+  });
+  g+=`<text class="axis" x="${cx}" y="${H-6}" text-anchor="middle" font-size="15">0%</text><text class="axis" x="${L}" y="${H-6}" font-size="15">減少</text><text class="axis" x="${W-R}" y="${H-6}" text-anchor="end" font-size="15">增加</text>`;
+  return `<svg class="bd-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t.name)}各項目增減率">${g}</svg>
+    <div class="bd-legend"><span><i style="background:var(--bd-up)"></i>增加</span><span><i style="background:var(--bd-down)"></i>減少</span><span><i class="tick"></i>全縣同期增減率</span></div>`;
+}
+/* ---- 計時：不顯示；掛在計時器頁且讀得到狀態時，換場次自動切公所 ---- */
+function renderTimer(){
+  if(!hasTimer()||(typeof synced!=="undefined"&&!synced)) return;
+  const tw=(typeof TOWNS!=="undefined"&&TOWNS[S.town])?TOWNS[S.town][0]:"";
+  const bi=D.towns.findIndex(t=>t.name===tw);
+  if(bi>=0&&st.lastTimerTown!==S.town&&bi!==st.town) selectTown(bi,false);
+  st.lastTimerTown=S.town;
+}
+let started=false;
+function start(){ if(started) return; started=true; applyPanel(); selectTown(st.town,false); renderTimer(); setInterval(()=>{ if(!root.hidden) renderTimer(); },1000); }
+// 線上版只在 #board 才啟動，避免手機遙控頁也去載入簡報圖片
+if(ONLINE&&!SOLO&&location.hash==="#board") root.hidden=false;
+if(!ONLINE||SOLO||location.hash==="#board") start();
+window.addEventListener("hashchange",()=>{ if(location.hash==="#board") start(); if(started&&!root.hidden) renderTimer(); });
+})();
+
+</script>
+<script>
+/* 115年鄉鎮市考核會場連線（主控台、計時器、簡報播放器、委員儀表板共用）
+   - 經公開 MQTT 中繼（WebSocket）同時連多個伺服器，訊息去重，任一台通即可。
+   - 不需登入、不需帳號；斷網時各系統照常獨立運作。
+   - 同一台電腦的視窗另用 BroadcastChannel 互通（不需網路）。 */
+window.VENUE=(function(){
+  const SITE="ndnb7hg6ad1l";
+  const PREFIX="nt115v/"+SITE+"/";
+  const BROKERS=(window.VENUE_BROKERS||[
+    "wss://broker.emqx.io:8084/mqtt",
+    "wss://broker.hivemq.com:8884/mqtt",
+    "wss://test.mosquitto.org:8081/mqtt"
+  ]);
+  const enc=new TextEncoder(), dec=new TextDecoder();
+  const subs=[];               // {filter, fn}
+  const conns=[];
+  const seen=new Map();        // 訊息去重
+  let statusFn=()=>{}, will=null, started=false;
+  let bc=null; try{ bc=new BroadcastChannel("nt115v-"+SITE); bc.onmessage=e=>deliver(e.data.t,e.data.p,"bc"); }catch(e){}
+
+  const rid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+  function str(s){const b=enc.encode(s); return [b.length>>8,b.length&255,...b];}
+  function remLen(n){const o=[]; do{let d=n%128; n=Math.floor(n/128); if(n>0)d|=128; o.push(d);}while(n>0); return o;}
+  function packet(type,body){return new Uint8Array([type,...remLen(body.length),...body]);}
+  function match(filter,topic){
+    const f=filter.split("/"), t=topic.split("/");
+    for(let i=0;i<f.length;i++){ if(f[i]==="#") return true; if(f[i]!=="+"&&f[i]!==t[i]) return false; }
+    return f.length===t.length;
+  }
+  function deliver(topic,payload,src){
+    let obj; try{ obj=typeof payload==="string"?JSON.parse(payload):payload; }catch(e){ return; }
+    if(obj&&obj._id){ const k=topic+"|"+obj._id; if(seen.has(k)) return; seen.set(k,Date.now());
+      if(seen.size>500){ const cut=Date.now()-600000; for(const [kk,v] of seen) if(v<cut) seen.delete(kk); } }
+    for(const s of subs) if(match(s.filter,topic)) try{ s.fn(obj,topic.slice(PREFIX.length)); }catch(e){ console.error(e); }
+  }
+  function Conn(url){
+    const c={url,ws:null,ok:false,buf:new Uint8Array(0),ping:0,retry:0,pid:1};
+    c.open=()=>{
+      try{ c.ws=new WebSocket(url,"mqtt"); }catch(e){ return c.later(); }
+      c.ws.binaryType="arraybuffer";
+      const to=setTimeout(()=>{ try{c.ws.close()}catch(e){} },8000);
+      c.ws.onopen=()=>{
+        let flags=0x02, pay=str("nt115-"+rid());
+        if(will){ flags|=0x04|0x20; pay=pay.concat(str(PREFIX+will.topic), str(JSON.stringify(will.obj))); }
+        const vh=[...str("MQTT"),4,flags,0,30];
+        c.ws.send(packet(0x10,vh.concat(pay)));
+      };
+      c.ws.onmessage=e=>{ clearTimeout(to); c.feed(new Uint8Array(e.data)); };
+      c.ws.onclose=()=>{ clearTimeout(to); const was=c.ok; c.ok=false; clearInterval(c.ping); if(was) report(); c.later(); };
+      c.ws.onerror=()=>{};
+    };
+    c.later=()=>{ c.retry=Math.min(c.retry+1,6); setTimeout(c.open,1000*Math.min(30,2**c.retry)); };
+    c.feed=data=>{
+      const b=new Uint8Array(c.buf.length+data.length); b.set(c.buf); b.set(data,c.buf.length); c.buf=b;
+      while(c.buf.length>=2){
+        let mul=1,len=0,i=1,byte;
+        do{ if(i>=c.buf.length) return; byte=c.buf[i++]; len+=(byte&127)*mul; mul*=128; }while(byte&128);
+        if(c.buf.length<i+len) return;
+        const hdr=c.buf[0], type=hdr>>4, body=c.buf.slice(i,i+len); c.buf=c.buf.slice(i+len);
+        if(type===2){ if(body[1]===0){ c.ok=true; c.retry=0; c.subscribeAll(); c.ping=setInterval(()=>{try{c.ws.send(new Uint8Array([0xC0,0]))}catch(e){}},20000); report(); if(c.onup) c.onup(); } }
+        else if(type===3){ const tl=(body[0]<<8)|body[1]; const topic=dec.decode(body.slice(2,2+tl)); let p=2+tl; if(hdr&6) p+=2; deliver(topic,dec.decode(body.slice(p)),"mqtt"); }
+      }
+    };
+    c.subscribe=filter=>{ if(!c.ok) return; const id=c.pid++&65535||1; c.ws.send(packet(0x82,[id>>8,id&255,...str(PREFIX+filter),0])); };
+    c.subscribeAll=()=>{ const done=new Set(); for(const s of subs){ if(done.has(s.raw)) continue; done.add(s.raw); c.subscribe(s.raw); } };
+    c.publish=(topic,payload,retain)=>{ if(!c.ok) return false; try{ c.ws.send(packet(0x30|(retain?1:0),[...str(PREFIX+topic),...enc.encode(payload)])); return true; }catch(e){ return false; } };
+    return c;
+  }
+  function report(){ statusFn(conns.filter(c=>c.ok).length, conns.length); }
+  let upFns=[];
+  return {
+    site:SITE,
+    start(opts){ if(started) return; started=true; opts=opts||{}; will=opts.will||null; if(opts.onStatus) statusFn=opts.onStatus;
+      if(opts.onUp) upFns.push(opts.onUp);
+      for(const u of BROKERS){ const c=Conn(u); c.onup=()=>upFns.forEach(f=>f()); conns.push(c); c.open(); } report(); },
+    onStatus(fn){ statusFn=fn; report(); },
+    onUp(fn){ upFns.push(fn); },
+    connected(){ return conns.filter(c=>c.ok).length; },
+    sub(filter,fn){ subs.push({filter:PREFIX+filter,raw:filter,fn}); for(const c of conns) c.subscribe(filter); },
+    pub(topic,obj,retain){ const o=Object.assign({},obj,{_id:rid(),_ts:Date.now()}); const p=JSON.stringify(o);
+      let n=0; for(const c of conns) if(c.publish(topic,p,retain)) n++;
+      try{ bc&&bc.postMessage({t:PREFIX+topic,p:o}); }catch(e){}
+      return n; }
+  };
+})();
+
+</script>
+<script>
+/* 委員儀表板接上會場連線：回報目前公所、接受主控台切換、計時器換場次時自動跟著切 */
+(function(){
+  if(!window.VENUE||!window.BOARD_API) return;
+  const LSK="nt115-board-id";
+  let id=null; try{ id=localStorage.getItem(LSK); }catch(e){}
+  if(!id){ id=Math.random().toString(36).slice(2,6).toUpperCase(); try{ localStorage.setItem(LSK,id); }catch(e){} }
+  let cur={town:-1,name:"",page:0,pages:0};
+  const send=()=>VENUE.pub("board/"+id+"/state",{id,online:true,town:cur.town,name:cur.name,page:cur.page,pages:cur.pages},true);
+  let t=0; const soon=()=>{ clearTimeout(t); t=setTimeout(send,400); };
+  addEventListener("board:nav",e=>{ cur=e.detail; soon(); });
+  VENUE.start({will:{topic:"board/"+id+"/state",obj:{id,online:false}},onUp:send});
+  setInterval(send,20000);
+  VENUE.sub("board/cmd",c=>{ if(!c) return; if(c.a==="town") BOARD_API.select(+c.v); });
+  // 計時器換場次時跟著切（只在場次改變那一刻切，委員之後仍可自己點別的公所）
+  let lastTimerTown=null;
+  VENUE.sub("timer/state",s=>{ if(!s||typeof s.town!=="number") return;
+    if(lastTimerTown!==null&&s.town!==lastTimerTown) BOARD_API.select(s.town);
+    lastTimerTown=s.town; });
+})();
+
+</script>
+</body>
+</html>
