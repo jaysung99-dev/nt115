@@ -8,6 +8,8 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# 從別台電腦／隨身碟複製來的簡報會被標成「來自網際網路」，PowerPoint 會用受保護的檢視開啟；這裡先解除封鎖（不需系統管理員權限）
+try { Get-ChildItem -LiteralPath $dir -File | Unblock-File -ErrorAction SilentlyContinue } catch {}
 $TOWNS = @('鹿谷鄉','集集鎮','名間鄉','南投市','仁愛鄉','水里鄉','埔里鎮','竹山鎮','中寮鄉','魚池鄉','信義鄉','草屯鎮','國姓鄉')
 $PREFIX = 'nt115v/ndnb7hg6ad1l/'
 $BROKERS = @('wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt')
