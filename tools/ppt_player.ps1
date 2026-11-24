@@ -85,11 +85,29 @@ function Do-Cmd($c) {
     }
   }
 }
+# 檢查放映狀態：PowerPoint 播影片或忙碌時 COM 會暫時沒回應，不可以因此判定放映結束（舊版會因此跳回清單）
+$script:lastPoll = [datetime]::MinValue
+function Show-Count {
+  try { return [int]$script:pp.SlideShowWindows.Count } catch { return -1 }  # -1 = 暫時問不到
+}
 function Poll-Show {
   if ($script:kind -ne 'ppt') { return }
-  $v = Get-View
-  if (-not $v) { if ($script:view -eq 'play') { $script:view = 'menu'; Set-Status '放映已結束（按 Esc 或播完），點公所可再播放'; Push-State; Show-Form }; return }
-  try { $p = [int]$v.CurrentShowPosition; if ($p -ge 1 -and $p -ne $script:page) { $script:page = $p; Push-State } } catch {}
+  if (((Get-Date) - $script:lastPoll).TotalMilliseconds -lt 500) { return }
+  $script:lastPoll = Get-Date
+  $n = Show-Count
+  if ($n -eq 0) {
+    if ($script:view -eq 'play') { $script:view = 'menu'; $script:page = 0; Set-Status '放映已結束（按 Esc 或播完），點公所可再播放'; Push-State; Show-Form }
+    return
+  }
+  if ($n -lt 0) { return }
+  $v = Get-View; if (-not $v) { return }
+  try {
+    $p = [int]$v.CurrentShowPosition
+    $changed = $false
+    if ($script:view -ne 'play') { $script:view = 'play'; $changed = $true }
+    if ($p -ge 1 -and $p -ne $script:page) { $script:page = $p; $changed = $true }
+    if ($changed) { Push-State }
+  } catch {}
 }
 
 # ---------- 會場連線（MQTT over WebSocket） ----------
@@ -106,11 +124,12 @@ function State-Json([bool]$online) {
   $o = [ordered]@{ online = $online }
   if ($online) {
     $o.view = $script:view; $o.town = $script:town; $o.name = $(if ($script:town -ge 0) { $TOWNS[$script:town] } else { '' })
-    $o.page = $script:page; $o.pages = $script:pages; $o.engine = 'ppt'
+    $o.page = $script:page; $o.pages = $script:pages; $o.engine = 'ppt'; $o.pid = $script:PLAYERID
   }
   $o._id = Rid; $o._ts = Now-Ms
   return ($o | ConvertTo-Json -Compress)
 }
+$script:PLAYERID = 'ppt-' + ([guid]::NewGuid().ToString('N').Substring(0, 6))
 $conns = @()
 foreach ($u in $BROKERS) { $conns += @{ url = $u; ws = $null; ok = $false; ct = $null; rt = $null; raw = (New-Object byte[] 65536); buf = (New-Object System.Collections.Generic.List[byte]); next = [datetime]::MinValue; retry = 0; started = [datetime]::MinValue; ping = [datetime]::MinValue; pid = 1 } }
 $seen = @{}

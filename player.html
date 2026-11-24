@@ -1292,7 +1292,8 @@ addEventListener("keydown",e=>{
 });
 addEventListener("wheel",e=>{ if(P.view!=="play") return; const now=Date.now(); if(now-(window._w||0)<350) return; window._w=now; show(P.page+(e.deltaY>0?1:-1)); },{passive:true});
 /* 會場連線：回報播放狀態、接受主控台指令 */
-let pt=0; function push(){ clearTimeout(pt); pt=setTimeout(()=>{ if(window.VENUE) VENUE.pub("player/state",{online:true,view:P.view,town:P.town,name:P.town>=0?TOWNS[P.town]:"",page:P.page,pages:P.pages},true); },200); }
+const PID="img-"+Math.random().toString(36).slice(2,8);
+let pt=0; function push(){ clearTimeout(pt); pt=setTimeout(()=>{ if(window.VENUE) VENUE.pub("player/state",{online:true,engine:"img",pid:PID,view:P.view,town:P.town,name:P.town>=0?TOWNS[P.town]:"",page:P.page,pages:P.pages},true); },200); }
 if(window.VENUE){
   VENUE.start({will:{topic:"player/state",obj:{online:false}},onUp:push,onStatus:n=>{ $("netDot").classList.toggle("on",n>0); $("netTx").textContent=n>0?"已連上會場連線（主控台可遙控）":"未連上會場連線：本機照常播放"; }});
   setInterval(push,20000);

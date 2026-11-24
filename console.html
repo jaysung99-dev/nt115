@@ -1288,7 +1288,7 @@ const TOWNS=window.BOARD_DATA.towns.map(t=>t.name);
 const SL=window.BOARD_SLIDES||{};
 const PHASES=[{name:"公所簡報",sec:600,color:"--talk"},{name:"委員提問",sec:300,color:"--ask"},{name:"公所回覆",sec:300,color:"--reply"}];
 const $=id=>document.getElementById(id);
-let T=null, tSeen=0, Pst=null, pSeen=0, net=0; const boards={};
+let T=null, tSeen=0, Pst=null, pSeen=0, net=0; const boards={}, players={};
 function fmt(ms){const neg=ms<0;let s=Math.ceil(Math.abs(ms)/1000);if(neg)s=Math.floor(Math.abs(ms)/1000);const m=Math.floor(s/60),r=s%60;return (neg?"+":"")+String(m).padStart(2,"0")+":"+String(r).padStart(2,"0")}
 // skew：本機與顯示螢幕電腦的時鐘差（取收到訊息延遲的最小值），避免兩台電腦時間不同步造成秒數不準
 let skew=null, disp={}, resetRev=0;
@@ -1335,7 +1335,8 @@ function render(){
     $("cNote").textContent=resetRev?"已全部重置：請到要用的那台計時器按「用這台當計時器顯示螢幕」":"等待計時器顯示螢幕"; }
   const pOn=Pst&&Pst.online!==false&&alive(pSeen,Pst._ts);
   $("nPlayer").className="dot"+(pOn?" on":"");
-  $("pSt").textContent=pOn?(Pst&&Pst.engine==="ppt"?"已連上 PowerPoint 放映器（下一頁會照順序播動畫）":"已連上圖片版播放器（無特效、音效）"):(Pst?"播放器離線（顯示最後狀態）":"等待播放器…");
+  const pl=Object.values(players).filter(p=>Date.now()-p.t<45000), nPpt=pl.filter(p=>p.engine==="ppt").length, nImg=pl.length-nPpt;
+  $("pSt").textContent=(pl.length>1?`注意：同時開著 ${nPpt} 個 PowerPoint 放映器、${nImg} 個圖片版，請只留 PowerPoint 放映器　`:"")+(pOn?(Pst&&Pst.engine==="ppt"?"已連上 PowerPoint 放映器（下一頁會照順序播動畫）":"已連上圖片版播放器（無特效、音效）"):(Pst?"播放器離線（顯示最後狀態）":"等待播放器…"));
   if(Pst){ $("pTown").textContent=Pst.view==="play"&&Pst.name?Pst.name:"—"; $("pView").textContent=Pst.view==="play"?"播放中":"選單"; $("pPg").textContent=Pst.view==="play"?`${Pst.page||0} / ${Pst.pages||0}`:"— / —";
     $("pTowns").querySelectorAll("button").forEach((b,i)=>b.classList.toggle("cur",Pst.view==="play"&&i===Pst.town)); }
   const list=Object.values(boards).filter(b=>b.online!==false&&alive(b.seen,b._ts));
@@ -1361,8 +1362,15 @@ $("tResetAll").onclick=()=>{
   VENUE.pub("timer/reset",{rev:Date.now(),town},true);
   msg("已送出全部重置。請到要用的那台計時器按「用這台當計時器顯示螢幕」");
 };
-VENUE.sub("player/state",o=>{ if(!o) return; if(o.online===false){ if(Date.now()-pSeen>25000){ pSeen=0; render(); } return; }
-  if(Pst&&(o._ts||0)<(Pst._ts||0)) return; Pst=o; pSeen=Date.now(); render(); });
+// 播放器：可能同時有 PowerPoint 放映器與圖片版在跑；有 PowerPoint 放映器在線時以它為準，並提示關掉多的
+VENUE.sub("player/state",o=>{ if(!o) return; if(o.online===false){ if(o.pid) delete players[o.pid]; if(Date.now()-pSeen>25000){ pSeen=0; render(); } return; }
+  const fresh=typeof o._ts==="number"&&Math.abs(Date.now()-o._ts)<45000;
+  if(o.pid&&fresh) players[o.pid]={engine:o.engine||"img",t:Date.now()};
+  const pptAlive=Object.values(players).some(p=>p.engine==="ppt"&&Date.now()-p.t<45000);
+  if(pptAlive&&o.engine!=="ppt") return;
+  if(Pst&&Pst.pid===o.pid&&(o._ts||0)<(Pst._ts||0)) return;
+  if(Pst&&Pst.pid!==o.pid&&!fresh) return;
+  Pst=o; pSeen=Date.now(); render(); });
 VENUE.sub("board/+/state",o=>{ if(!o||!o.id) return; const b=boards[o.id]; if(b&&(o._ts||0)<(b._ts||0)) return; boards[o.id]=Object.assign(o,{seen:Date.now()}); render(); });
 setInterval(render,250);
 </script>
