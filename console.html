@@ -94,6 +94,7 @@ details li{margin:.35em 0;line-height:1.6;color:#D5DEDC}
     <div class="big"><span class="town" id="pTown">—</span><span class="pill" id="pView">—</span></div>
     <div class="time" id="pPg" style="--ph:#EEF3F2;font-size:40px">— / —</div>
     <button type="button" class="btn" id="pShow" style="background:var(--talk);color:#06231A;border:0;font-size:18px">⛶ 全螢幕放映（從目前頁）</button>
+    <div class="row r2"><button type="button" class="btn" id="pVid">▶ 播放本頁影片（備案）</button><button type="button" class="btn" id="pVidStop">■ 停止影片、回簡報</button></div>
     <div class="row r3"><button type="button" class="btn" id="pPrev">◀ 上一頁</button><button type="button" class="btn" id="pNext">下一頁 ▶</button><button type="button" class="btn" id="pMenu">結束放映</button></div>
     <div class="pshot" id="pShotBox" title="在畫面上滾動滑鼠滾輪可上下翻頁"><img id="pShot" alt="目前頁面" hidden><div class="none" id="pShotNone">尚未播放</div><span class="hint">滾輪翻頁</span></div>
     <div class="pjump"><span class="lab" style="margin:0">跳到第</span><input id="pJump" type="number" min="1" inputmode="numeric" placeholder="頁碼，按 Enter"><button type="button" class="btn" id="pGo">跳頁</button></div>
@@ -1349,7 +1350,7 @@ function renderPages(){
 let wheelT=0; $("pShotBox").addEventListener("wheel",e=>{ e.preventDefault(); const now=Date.now(); if(now-wheelT<350) return; wheelT=now; pcmd(e.deltaY>0?"next":"prev"); },{passive:false});
 const jump=()=>{ const n=parseInt($("pJump").value,10); if(!Pst||!Pst.pages) return msg("播放器還沒在播放簡報"); if(!(n>=1&&n<=Pst.pages)) return msg(`請輸入 1～${Pst.pages}`); pcmd("page",n); $("pJump").select(); };
 $("pGo").onclick=jump; $("pJump").addEventListener("keydown",e=>{ if(e.key==="Enter") jump(); });
-$("pPrev").onclick=()=>pcmd("prev"); $("pNext").onclick=()=>pcmd("next"); $("pMenu").onclick=()=>pcmd("menu"); $("pShow").onclick=()=>pcmd("show");
+$("pPrev").onclick=()=>pcmd("prev"); $("pNext").onclick=()=>pcmd("next"); $("pMenu").onclick=()=>pcmd("menu"); $("pShow").onclick=()=>pcmd("show"); $("pVid").onclick=()=>pcmd("video"); $("pVidStop").onclick=()=>pcmd("videostop");
 $("pFollow").onclick=()=>{ if(!T) return msg("尚未收到計時器狀態"); pcmd("town",T.town); };
 $("bGo").onclick=()=>VENUE.pub("board/cmd",{a:"town",v:+$("bSel").value});
 $("bFollow").onclick=()=>{ if(!T) return msg("尚未收到計時器狀態"); VENUE.pub("board/cmd",{a:"town",v:T.town}); };

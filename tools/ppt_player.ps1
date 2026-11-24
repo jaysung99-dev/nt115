@@ -86,6 +86,62 @@ function Start-Full {
   }
   if ($script:town -ge 0) { Open-Town $script:town }
 }
+# 備案影片：PowerPoint 舊版（如 2007）播不出嵌入影片時，主控台按「播放本頁影片」
+# 會用 Windows Media Player 全螢幕蓋在放映畫面上播放，播完自動關掉、回到原本那頁
+# 檔案放在 影片備案\，檔名「NN_鄉鎮名_第PP頁.mp4」（NN = 公所序號、PP = 頁碼）
+$script:vStart = $null; $script:vEnd = $null; $script:vProc = $null
+function Find-Video([int]$town, [int]$page) {
+  $vd = Join-Path $dir '影片備案'
+  if (-not (Test-Path -LiteralPath $vd)) { return $null }
+  $pre = '{0:D2}_' -f ($town + 1)
+  return (Get-ChildItem -LiteralPath $vd -File | Where-Object { $_.Name.StartsWith($pre) -and $_.Name -match ('第0*' + $page + '頁') } | Select-Object -First 1)
+}
+function Video-Seconds($f) {
+  try {
+    $sh = New-Object -ComObject Shell.Application
+    $it = $sh.Namespace($f.DirectoryName).ParseName($f.Name)
+    $t = [string]$sh.Namespace($f.DirectoryName).GetDetailsOf($it, 27)
+    $t = ($t -replace '[^0-9:]', '')
+    if ($t) { return [TimeSpan]::Parse($t).TotalSeconds }
+  } catch {}
+  return 0
+}
+function Start-Video {
+  if ($script:town -lt 0) { Set-Status '請先開啟公所簡報'; return }
+  $pg = $(if ($script:page -ge 1) { $script:page } else { $script:resume })
+  $f = Find-Video $script:town $pg
+  if (-not $f) { Set-Status ($TOWNS[$script:town] + ' 第 ' + $pg + ' 頁沒有備案影片'); return }
+  Stop-Video $false
+  $wmp = @("$env:ProgramFiles\Windows Media Player\wmplayer.exe", "${env:ProgramFiles(x86)}\Windows Media Player\wmplayer.exe") | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+  $sec = Video-Seconds $f
+  $script:vStart = Get-Date
+  try {
+    if ($wmp) { $script:vProc = Start-Process -FilePath $wmp -ArgumentList ('"' + $f.FullName + '" /fullscreen') -PassThru }
+    else { $script:vProc = Start-Process -FilePath $f.FullName -PassThru }
+  } catch { Set-Status ('影片開不起來：' + $f.Name); $script:vStart = $null; return }
+  $script:vEnd = $(if ($sec -gt 0) { $script:vStart.AddSeconds($sec + 2) } else { $null })
+  Set-Status ('播放影片：' + $f.Name + $(if ($sec -gt 0) { '（約 ' + [int]$sec + ' 秒，播完自動回簡報）' } else { '（播完請按主控台「停止影片」回簡報）' }))
+}
+function Stop-Video([bool]$manual) {
+  if (-not $script:vStart) { return }
+  $t0 = $script:vStart.AddSeconds(-2)
+  try { if ($script:vProc -and -not $script:vProc.HasExited) { $script:vProc.Kill() } } catch {}
+  try { Get-Process -Name wmplayer -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -ge $t0 } | ForEach-Object { try { $_.Kill() } catch {} } } catch {}
+  $script:vStart = $null; $script:vEnd = $null; $script:vProc = $null
+  if ($script:kind -eq 'ppt' -and $script:pres) { try { $script:pres.SlideShowWindow.Activate() } catch {} }
+  Set-Status '影片結束，回到簡報'
+}
+function Poll-Video {
+  if (-not $script:vStart) { return }
+  if ($script:vEnd -and (Get-Date) -ge $script:vEnd) { Stop-Video $false; return }
+  # 有人自己把播放器關掉：開始 3 秒後找不到播放器，就回到簡報
+  if (((Get-Date) - $script:vStart).TotalSeconds -gt 3) {
+    $alive = $false
+    try { if ($script:vProc -and -not $script:vProc.HasExited) { $alive = $true } } catch {}
+    if (-not $alive) { try { $t0 = $script:vStart.AddSeconds(-2); if (Get-Process -Name wmplayer -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -ge $t0 }) { $alive = $true } } catch {} }
+    if (-not $alive -and $script:vEnd) { Stop-Video $false }
+  }
+}
 function Do-Cmd($c) {
   if (-not $c) { return }
   $a = [string]$c.a
@@ -93,6 +149,8 @@ function Do-Cmd($c) {
     'town' { Open-Town ([int]$c.v) }
     'menu' { Close-Current; Show-Form; Push-State }
     'show' { Start-Full }
+    'video' { Start-Video }
+    'videostop' { Stop-Video $true }
     default {
       if ($script:kind -eq 'pdf') {
         if ($a -eq 'next') { [System.Windows.Forms.SendKeys]::SendWait('{PGDN}') }
@@ -250,7 +308,7 @@ function Pump {
 }
 $script:beat = Get-Date
 function Tick {
-  Pump; Poll-Show
+  Pump; Poll-Show; Poll-Video
   if (((Get-Date) - $script:beat).TotalSeconds -ge 20) { $script:beat = Get-Date; Push-State }
 }
 
