@@ -7,7 +7,7 @@
 /* 投影用深色單一主題：大字倒數置中，遙控頁為單欄按鈕 */
 :root{
   --bg:#0E1416; --panel:#1C282D; --line:#3A4C53; --fg:#FFFFFF; --muted:#C9D5D7;
-  --talk:#3DF5A6; --warn:#FFD028; --over:#FF4D42; --ask:#4DB8FF; --reply:#C9A8FF;
+  --talk:#3DF5A6; --brief:#FFD028; --warn:#FF8A1A; --over:#FF4D42; --ask:#4DB8FF; --reply:#C9A8FF;
   --display:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
   --mono:"IBM Plex Mono","Consolas",ui-monospace,monospace;
   color-scheme:dark;
@@ -33,10 +33,12 @@ button:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 .d-slot{font-family:var(--mono);color:var(--muted);font-size:clamp(14px,2vw,26px)}
 .d-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1vh;min-height:0}
 .d-phase{font-size:clamp(22px,4.5vw,64px);font-weight:700;padding:.15em .8em;border-radius:999px;background:color-mix(in srgb,var(--ph) 26%,transparent);color:var(--ph)}
-.d-time{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(90px,24vw,360px);line-height:1;color:var(--ph);transition:color .3s}
+.d-time{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(100px,min(30vw,58vh),600px);line-height:1;white-space:nowrap;color:var(--ph);transition:color .3s}
 .d-note{font-size:clamp(18px,3vw,44px);font-weight:700;min-height:1.3em;color:var(--fg)}
 .d-bar{height:14px;border-radius:7px;background:var(--line);overflow:hidden}
 .d-bar i{display:block;height:100%;background:var(--ph);width:0%;transition:width .5s linear}
+.d-steps,#display .d-sync{display:none!important}
+.d-time.long{font-size:clamp(90px,min(25vw,50vh),500px)}
 .d-steps{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
 .d-steps span{flex:1;min-width:120px;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--line);color:var(--muted);font-size:clamp(14px,1.8vw,24px)}
 .d-steps span.on{border-color:var(--ph);color:var(--fg);background:color-mix(in srgb,var(--ph) 14%,transparent)}
@@ -241,7 +243,7 @@ window.VENUE=(function(){
 <script>
 // ---- 規則 ----
 const PHASES=[
-  {name:"公所簡報",sec:600,color:"--talk"},
+  {name:"公所簡報",sec:600,color:"--brief"},
   {name:"委員提問",sec:300,color:"--ask"},
   {name:"公所回覆",sec:300,color:"--reply"}
 ];
@@ -365,7 +367,7 @@ function render(){
   else if(S.phase===0&&r<=180000) note="剩餘3分鐘";
   if(mode()==="display"){
     dTown.textContent=town[0]; dSlot.textContent=S.phase<0?"":`預定 ${town[1]}`;
-    dPhase.textContent=pname; dTime.textContent=S.phase<0?fmt(phaseMs(0)):fmt(r); dNote.textContent=note;
+    dPhase.textContent=pname; dTime.textContent=S.phase<0?fmt(phaseMs(0)):fmt(r); dTime.classList.toggle("long",dTime.textContent.length>5); dNote.textContent=note;
     const tot=S.phase<0?1:phaseMs(S.phase); dBar.style.width=S.phase<0?"0%":Math.min(100,Math.max(0,(1-r/tot)*100))+"%";
     dSteps.innerHTML=PHASES.map((p,i)=>`<span class="${i===S.phase?"on":i<S.phase?"done":""}">${p.name} ${p.sec/60}分</span>`).join("");
     document.getElementById("display").classList.toggle("paused",S.phase>=0&&!S.running);
