@@ -6,6 +6,34 @@ param([int]$SelfTest = 0, [string]$Send = '')
 $ErrorActionPreference = 'Continue'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+# 讓放映視窗一定跳到最前面：Windows 會擋背景程式搶前景，所以用 AttachThreadInput 借前景權限
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class NtFg {
+  [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int n);
+  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr p);
+  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool f);
+  [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
+  public static void Allow() { try { AllowSetForegroundWindow(-1); } catch {} }
+  public static bool IsFront(IntPtr h) { return GetForegroundWindow() == h; }
+  public static void Front(IntPtr h) {
+    if (h == IntPtr.Zero) return;
+    uint me = GetCurrentThreadId();
+    uint fg = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+    uint tg = GetWindowThreadProcessId(h, IntPtr.Zero);
+    if (fg != me) AttachThreadInput(me, fg, true);
+    if (tg != me) AttachThreadInput(me, tg, true);
+    ShowWindow(h, 5); BringWindowToTop(h); SetForegroundWindow(h);
+    if (tg != me) AttachThreadInput(me, tg, false);
+    if (fg != me) AttachThreadInput(me, fg, false);
+  }
+}
+"@
 
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # 從別台電腦／隨身碟複製來的簡報會被標成「來自網際網路」，PowerPoint 會用受保護的檢視開啟；這裡先解除封鎖（不需系統管理員權限）
@@ -35,6 +63,20 @@ function Get-View {
   if (-not $script:pres) { return $null }
   try { return $script:pres.SlideShowWindow.View } catch { return $null }
 }
+function Show-Hwnd { try { return [IntPtr][int]$script:pres.SlideShowWindow.HWND } catch { return [IntPtr]::Zero } }
+# 把全螢幕放映拉到最前面；剛開始放映的 3 秒內，Tick 會再檢查，沒在最前面就再拉一次
+$script:focusUntil = $null
+function Focus-Show {
+  if (-not $script:pres) { return }
+  try { $script:pres.SlideShowWindow.Activate() } catch {}
+  try { [NtFg]::Front((Show-Hwnd)) } catch {}
+}
+function Begin-Show { if ($script:form) { try { $script:form.WindowState = 'Minimized' } catch {} }; [NtFg]::Allow() }
+function Poll-Focus {
+  if (-not $script:focusUntil) { return }
+  if ((Get-Date) -gt $script:focusUntil) { $script:focusUntil = $null; return }
+  if ((Show-Count) -gt 0) { $h = Show-Hwnd; if ($h -ne [IntPtr]::Zero -and -not [NtFg]::IsFront($h)) { Focus-Show } }
+}
 function Open-Town([int]$i) {
   if ($i -lt 0 -or $i -ge $TOWNS.Count) { return }
   $f = Find-File $i
@@ -54,9 +96,10 @@ function Open-Town([int]$i) {
     $script:pres = $script:pp.Presentations.Open($f.FullName, -1, 0, -1)
     $ss = $script:pres.SlideShowSettings
     try { $ss.ShowType = 1; $ss.LoopUntilStopped = 0; $ss.AdvanceMode = 2 } catch {}
+    Begin-Show
     [void]$ss.Run()
     $script:kind = 'ppt'; $script:view = 'play'; $script:pages = $script:pres.Slides.Count; $script:page = 1
-    try { $script:pres.SlideShowWindow.Activate() } catch {}
+    Focus-Show; $script:focusUntil = (Get-Date).AddSeconds(3)
     Set-Status ('放映中：' + $TOWNS[$i] + '（簡報筆、鍵盤、主控台都可翻頁）')
   } catch {
     Set-Status ('PowerPoint 開啟失敗，改直接開檔（請按 F5 放映）：' + $f.Name)
@@ -70,15 +113,16 @@ $script:resume = 1
 function Start-Full {
   if ($script:kind -eq 'ppt' -and $script:pres) {
     $n = Show-Count
-    if ($n -gt 0) { try { $script:pres.SlideShowWindow.Activate() } catch {}; Set-Status '已切回全螢幕放映'; Push-State; return }
+    if ($n -gt 0) { Begin-Show; Focus-Show; $script:focusUntil = (Get-Date).AddSeconds(3); Set-Status '已切回全螢幕放映'; Push-State; return }
     try {
       $total = [int]$script:pres.Slides.Count
       $start = [Math]::Max(1, [Math]::Min($total, [int]$script:resume))
       $ss = $script:pres.SlideShowSettings
       try { $ss.ShowType = 1; $ss.LoopUntilStopped = 0; $ss.AdvanceMode = 2 } catch {}
       $ss.RangeType = 2; $ss.StartingSlide = $start; $ss.EndingSlide = $total
+      Begin-Show
       [void]$ss.Run()
-      try { $script:pres.SlideShowWindow.Activate() } catch {}
+      Focus-Show; $script:focusUntil = (Get-Date).AddSeconds(3)
       $script:view = 'play'; $script:page = $start; $script:pages = $total
       Set-Status ('全螢幕放映：' + $TOWNS[$script:town] + '（從第 ' + $start + ' 頁）')
       Push-State; return
@@ -128,7 +172,7 @@ function Stop-Video([bool]$manual) {
   try { if ($script:vProc -and -not $script:vProc.HasExited) { $script:vProc.Kill() } } catch {}
   try { Get-Process -Name wmplayer -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -ge $t0 } | ForEach-Object { try { $_.Kill() } catch {} } } catch {}
   $script:vStart = $null; $script:vEnd = $null; $script:vProc = $null
-  if ($script:kind -eq 'ppt' -and $script:pres) { try { $script:pres.SlideShowWindow.Activate() } catch {} }
+  if ($script:kind -eq 'ppt' -and $script:pres) { Focus-Show }
   Set-Status '影片結束，回到簡報'
 }
 function Poll-Video {
@@ -163,7 +207,7 @@ function Play-Audio([string]$name) {
     Set-Status ('播放聲音：' + $f.Name + '（簡報照常進行）')
   } catch { $script:aud = ''; Set-Status ('聲音播不出來：' + $f.Name + '，可直接雙擊這個檔案播放') }
   Push-State
-  if ($script:kind -eq 'ppt' -and $script:pres) { try { if ((Show-Count) -gt 0) { $script:pres.SlideShowWindow.Activate() } } catch {} }
+  if ($script:kind -eq 'ppt' -and $script:pres) { if ((Show-Count) -gt 0) { Focus-Show } }
 }
 function Stop-Audio {
   try { if ($script:wmp) { $script:wmp.controls.stop() } } catch {}
@@ -344,7 +388,7 @@ function Pump {
 }
 $script:beat = Get-Date
 function Tick {
-  Pump; Poll-Show; Poll-Video; Poll-Audio
+  Pump; Poll-Show; Poll-Focus; Poll-Video; Poll-Audio
   if (((Get-Date) - $script:beat).TotalSeconds -ge 20) { $script:beat = Get-Date; Push-State }
 }
 
