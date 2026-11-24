@@ -38,6 +38,14 @@ public static class NtFg {
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # 從別台電腦／隨身碟複製來的簡報會被標成「來自網際網路」，PowerPoint 會用受保護的檢視開啟；這裡先解除封鎖（不需系統管理員權限）
 try { Get-ChildItem -LiteralPath $dir -File | Unblock-File -ErrorAction SilentlyContinue } catch {}
+# 只留一個放映器：再開一次 .bat 時，先把舊的放映器關掉，避免兩個同時收主控台指令（翻頁重複、簡報開兩次）
+if ($SelfTest -eq 0 -and -not $Send) {
+  try {
+    Get-CimInstance Win32_Process -Filter "Name='powershell.exe' or Name='pwsh.exe'" |
+      Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like '*ppt_player.ps1*' -and $_.CommandLine -notlike '*-Send*' -and $_.CommandLine -notlike '*-SelfTest*' } |
+      ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }
+  } catch {}
+}
 $TOWNS = @('鹿谷鄉','集集鎮','名間鄉','南投市','仁愛鄉','水里鄉','埔里鎮','竹山鎮','中寮鄉','魚池鄉','信義鄉','草屯鎮','國姓鄉')
 $PREFIX = 'nt115v/ndnb7hg6ad1l/'
 $BROKERS = @('wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt')
@@ -457,6 +465,11 @@ $endBtn = New-Object System.Windows.Forms.Button
 $endBtn.Text = '結束目前放映並關閉簡報'; $endBtn.Width = 540; $endBtn.Height = 46
 $endBtn.Add_Click({ Close-Current; Set-Status '已關閉目前簡報'; Push-State })
 $panel.Controls.Add($endBtn)
+$quitBtn = New-Object System.Windows.Forms.Button
+$quitBtn.Text = '完全關閉放映器（會議結束時按）'; $quitBtn.Width = 540; $quitBtn.Height = 46
+$quitBtn.ForeColor = [System.Drawing.Color]::FromArgb(190, 60, 50)
+$quitBtn.Add_Click({ $form.Close() })
+$panel.Controls.Add($quitBtn)
 
 Update-Net
 $timer = New-Object System.Windows.Forms.Timer
@@ -467,5 +480,12 @@ $form.Add_FormClosing({
   $timer.Stop()
   foreach ($c in $conns) { if ($c.ok) { C-Publish $c 'player/state' (State-Json $false) $true } }
   Close-Current
+  # PowerPoint 沒有其他開著的檔案就一起關掉（有別的檔案開著就不動它）
+  try { if ($script:pp -and [int]$script:pp.Presentations.Count -eq 0) { $script:pp.Quit() } } catch {}
+  try { if ($script:pp) { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($script:pp) } } catch {}
+  $script:pp = $null
 })
 [void]$form.ShowDialog()
+# 視窗關掉後確實結束整個程式，不留在背景
+foreach ($c in $conns) { try { $c.ws.Dispose() } catch {} }
+[Environment]::Exit(0)
