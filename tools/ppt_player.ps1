@@ -88,7 +88,7 @@ function Do-Cmd($c) {
 function Poll-Show {
   if ($script:kind -ne 'ppt') { return }
   $v = Get-View
-  if (-not $v) { if ($script:view -eq 'play') { $script:view = 'menu'; Set-Status '放映已結束（按 Esc 或播完），點公所可再播放'; Push-State }; return }
+  if (-not $v) { if ($script:view -eq 'play') { $script:view = 'menu'; Set-Status '放映已結束（按 Esc 或播完），點公所可再播放'; Push-State; Show-Form }; return }
   try { $p = [int]$v.CurrentShowPosition; if ($p -ge 1 -and $p -ne $script:page) { $script:page = $p; Push-State } } catch {}
 }
 
