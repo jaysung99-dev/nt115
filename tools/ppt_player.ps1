@@ -21,6 +21,25 @@ public static class NtFg {
   [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
   [DllImport("user32.dll")] static extern void keybd_event(byte v, byte sc, uint f, UIntPtr e);
   [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint f);
+  delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+  // 找 PowerPoint 全螢幕放映視窗（類別 screenClass）；標題含簡報檔名的優先
+  public static IntPtr FindShow(string part) {
+    IntPtr best = IntPtr.Zero, any = IntPtr.Zero;
+    EnumWindows(delegate (IntPtr h, IntPtr l) {
+      if (!IsWindowVisible(h)) return true;
+      var c = new System.Text.StringBuilder(64); GetClassName(h, c, 64);
+      if (c.ToString() != "screenClass") return true;
+      if (any == IntPtr.Zero) any = h;
+      var t = new System.Text.StringBuilder(512); GetWindowText(h, t, 512);
+      if (!string.IsNullOrEmpty(part) && t.ToString().Contains(part)) { best = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return best != IntPtr.Zero ? best : any;
+  }
   public static void Allow() { try { AllowSetForegroundWindow(-1); } catch {} }
   public static bool IsFront(IntPtr h) { return GetForegroundWindow() == h; }
   public static void Front(IntPtr h) {
@@ -77,7 +96,12 @@ function Get-View {
   if (-not $script:pres) { return $null }
   try { return $script:pres.SlideShowWindow.View } catch { return $null }
 }
-function Show-Hwnd { try { return [IntPtr][int]$script:pres.SlideShowWindow.HWND } catch { return [IntPtr]::Zero } }
+function Show-Hwnd {
+  # PowerShell 讀不到 SlideShowWindow.HWND，改用視窗類別與標題找放映視窗
+  $part = ''
+  try { $part = [IO.Path]::GetFileNameWithoutExtension([string]$script:pres.Name) } catch {}
+  try { return [NtFg]::FindShow($part) } catch { return [IntPtr]::Zero }
+}
 # 把全螢幕放映拉到最前面；剛開始放映的 3 秒內，Tick 會再檢查，沒在最前面就再拉一次
 $script:focusUntil = $null
 function Focus-Show {
@@ -238,7 +262,7 @@ function Do-Cmd($c) {
   $a = [string]$c.a
   switch ($a) {
     'town' { Open-Town ([int]$c.v) }
-    'menu' { Close-Current; Show-Form; Push-State }
+    'menu' { Close-Current; Set-Status '已回到選單，點公所即可放映'; Show-Form; Push-State }
     'show' { Start-Full }
     'video' { Start-Video }
     'videostop' { Stop-Video $true }
