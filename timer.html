@@ -47,6 +47,10 @@ button:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 #unlock{position:fixed;inset:0;background:rgba(8,12,13,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:5;text-align:center;padding:24px}
 #unlock button{font-size:24px;font-weight:700;padding:18px 34px;border-radius:14px;border:0;background:var(--talk);color:#06231A}
 #unlock p{color:var(--muted);margin:0}
+#locked{position:fixed;inset:0;background:rgba(40,8,8,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:6;text-align:center;padding:24px;color:#fff;font-size:clamp(16px,1.8vw,24px);line-height:1.6}
+#locked[hidden]{display:none}
+#locked p{margin:0;color:#f3d6d3}
+#locked button{font-size:24px;font-weight:700;padding:18px 34px;border-radius:14px;border:0;background:var(--warn);color:#2A1C00}
 .snd{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .snd button{font-size:17px;font-weight:700;padding:12px 18px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
 .snd button.sel{border-color:var(--talk);background:color-mix(in srgb,var(--talk) 18%,transparent)}
@@ -98,8 +102,14 @@ button:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
   <div class="d-bar"><i id="dBar"></i></div>
   <div class="d-steps" id="dSteps"></div>
   <div class="d-sync" id="dSync"></div>
+  <div id="locked" hidden>
+    <h2 style="margin:0;font-size:clamp(24px,3.4vw,44px)">主控台已執行「全部重置」</h2>
+    <p>這台目前<b>停用</b>：不計時、不響鈴、不接受遙控。</p>
+    <p>不要用這台當計時器 → 直接關掉這個視窗。<br>要用這台當<b>唯一的</b>計時器顯示螢幕 → 按下面的按鈕。</p>
+    <button id="claimBtn" type="button">用這台當計時器顯示螢幕</button>
+  </div>
   <div id="unlock">
-    <p>簡報剩 3 分鐘響鈴 1 聲、剩 2 分鐘響鈴 2 聲；時間到播語音「時間到，請停止簡報」</p>
+    <p>簡報剩 3 分鐘響鈴 1 聲、剩 2 分鐘響鈴 2 聲；簡報與公所回覆時間到播語音「時間到，請停止簡報」；委員提問時間到不響</p>
     <div class="snd" id="sndPick"></div>
     <button id="unlockBtn" type="button">啟用響鈴並全螢幕</button>
     <p>瀏覽器規定要先點一下才能出聲。點完後鈴聲會自動依規則響起。</p>
@@ -262,6 +272,7 @@ async function initSync(){
 function setSync(t){for(const id of["dSync","rSync"]){const el=document.getElementById(id);if(el)el.textContent=t}}
 function apply(d,src){
   if(d.rev<S.rev) return;
+  if(locked&&mode()==="display") return;
   const prevBell=S.bell?.seq||0, first=S.rev===0;
   S=Object.assign({done:[],bell:{seq:0,n:0}},d);
   if(!first && S.bell.seq>prevBell && mode()==="display") alarm(S.bell.n);
@@ -334,7 +345,7 @@ function sayEnd(){ const ss=window.speechSynthesis; if(!ss||typeof SpeechSynthes
 let fired={};
 function resetFired(){fired={};const r=remain();const b=BELLS[S.phase]||[];
   for(const [at] of b){ if(r<=at*1000) fired[S.town+"-"+S.phase+"-"+at]=true; }} // 已過的門檻不補響
-function checkBells(){ if(mode()!=="display"||!S.running||S.phase<0)return; const r=remain();
+function checkBells(){ if(mode()!=="display"||locked||!S.running||S.phase<0)return; const r=remain();
   for(const [at,k] of (BELLS[S.phase]||[])){const key=S.town+"-"+S.phase+"-"+at; if(!fired[key]&&r<=at*1000){fired[key]=true;
     alarm(k);
     }}}
@@ -405,6 +416,13 @@ function initDisplay(){
   pick.innerHTML=`<button type="button" data-t="warn">試聽：剩 3 分鐘（1 聲）</button><button type="button" data-t="warn2">試聽：剩 2 分鐘（2 聲）</button><button type="button" data-t="voice">試聽：時間到語音</button>`;
   pick.querySelectorAll("button").forEach(b=>b.onclick=async()=>{try{await ensureAudio(); tests[b.dataset.t]();}catch(e){}});
   try{window.speechSynthesis?.getVoices();}catch(e){}
+  claimBtn.onclick=async()=>{
+    try{await ensureAudio();}catch(e){}
+    const n=initialState(S.town); setLocked(false); document.getElementById("unlock").hidden=true;
+    commit(n); // 新的 rev 一定大於重置時間，主控台與遙控器會改跟這台
+    try{await document.documentElement.requestFullscreen?.()}catch(e){}
+    keepAwake();
+  };
   unlockBtn.onclick=async()=>{
     try{await ensureAudio();ring(1);}catch(e){}
     document.getElementById("unlock").hidden=true;
@@ -412,7 +430,7 @@ function initDisplay(){
     keepAwake();
   };
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")keepAwake()});
-  document.addEventListener("keydown",e=>{ if(mode()==="display"&&(e.key===" "||e.code==="Space")){e.preventDefault();startOrPause();} });
+  document.addEventListener("keydown",e=>{ if(mode()==="display"&&!locked&&(e.key===" "||e.code==="Space")){e.preventDefault();startOrPause();} });
   document.getElementById("display").ondblclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
 }
 function route(){const m=mode();
@@ -420,9 +438,17 @@ function route(){const m=mode();
   render();}
 if(window.TIMER_MODE&&mode()!==window.TIMER_MODE) history.replaceState(null,"","#"+window.TIMER_MODE);
 let dispSeen=0, netN=0, rSkew=null;
+// 全部重置：主控台發出 timer/reset（保留訊息）。顯示螢幕收到後停用，直到有人在那台按「用這台當計時器顯示螢幕」
+let locked=false, resetRev=0;
+function initialState(town){ return {town:(Number.isInteger(town)&&town>=0&&town<TOWNS.length)?town:0,phase:-1,running:false,endsAt:0,remainMs:600000,done:[],bell:{seq:0,n:0},rev:0}; }
+function setLocked(v){ locked=v; const el=document.getElementById("locked"); if(el) el.hidden=!v; if(v){ try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){} } }
+function onReset(o){ if(!o||typeof o.rev!=="number") return; if(o.rev>resetRev) resetRev=o.rev; const m=mode();
+  if(m==="display"){ if(S.rev>=o.rev) return; // 重置之後已被指定為計時器的這台不受影響
+    S=initialState(o.town); resetFired(); setLocked(true); render(); }
+  else if(m==="remote"){ if(S.rev>=o.rev) return; S=initialState(o.town); dispSeen=0; rSkew=null; render(); venueStatus(); msg("主控台已全部重置，等待新指定的計時器顯示螢幕"); } }
 // 每個顯示螢幕視窗一個代號，讓主控台能發現同時開了兩個顯示螢幕
 const DID=(()=>{ try{ let v=sessionStorage.getItem("nt115-did"); if(!v){ v=Math.random().toString(36).slice(2,8); sessionStorage.setItem("nt115-did",v);} return v; }catch(e){ return Math.random().toString(36).slice(2,8); } })();
-function venuePush(){ if(mode()==="display"&&window.VENUE) VENUE.pub("timer/state",Object.assign({},S,{role:"display",online:true,did:DID}),true); }
+function venuePush(){ if(mode()==="display"&&!locked&&window.VENUE) VENUE.pub("timer/state",Object.assign({},S,{role:"display",online:true,did:DID}),true); }
 function venueStatus(){
   const m=mode();
   if(m==="display") setSync(netN>0?"會場連線：已連上（遙控器、主控台可操作）":"會場連線：未連上，請用同一台電腦的遙控器視窗或空白鍵");
@@ -432,13 +458,15 @@ function venueStatus(){
 function initVenue(){ if(!window.VENUE) return; const m=mode();
   if(m==="display"){
     VENUE.start({will:{topic:"timer/state",obj:{role:"display",online:false}},onUp:venuePush,onStatus:n=>{netN=n;venueStatus();}});
-    VENUE.sub("timer/cmd",c=>{ if(c&&ACT[c.a]) ACT[c.a](c.v); });
+    VENUE.sub("timer/cmd",c=>{ if(locked) return; if(c&&ACT[c.a]) ACT[c.a](c.v); });
+    VENUE.sub("timer/reset",onReset);
     setInterval(venuePush,15000);
   }else{
     VENUE.start({onStatus:n=>{netN=n;venueStatus();}});
+    VENUE.sub("timer/reset",onReset);
     VENUE.sub("timer/state",o=>{ if(!o||o.role!=="display") return;
       if(o.online===false){ if(Date.now()-dispSeen>20000){ dispSeen=0; venueStatus(); } return; }
-      if(typeof o.rev!=="number"||o.rev<S.rev) return; // 舊狀態（重新連線時補送的保留訊息）不採用
+      if(typeof o.rev!=="number"||o.rev<S.rev||o.rev<resetRev) return; // 舊狀態（重新連線時補送的保留訊息）不採用
       if(typeof o._ts==="number"){ const d=Date.now()-o._ts; if(d>-600000&&d<600000&&(rSkew===null||d<rSkew)) rSkew=d; }
       dispSeen=Date.now(); const d=Object.assign({},o); delete d._id; delete d._ts; delete d.role; delete d.online; delete d.did;
       if(d.running&&rSkew) d.endsAt+=rSkew; // 換算成本機時鐘

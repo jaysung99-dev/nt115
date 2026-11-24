@@ -73,6 +73,7 @@ details li{margin:.35em 0;line-height:1.6;color:#D5DEDC}
     <div class="row r2"><button type="button" class="btn" id="tReset">本階段重來</button><button type="button" class="btn" id="tBell">手動響鈴（1聲）</button></div>
     <div class="row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><button type="button" class="btn" id="tB3">剩3分鐘・響1聲</button><button type="button" class="btn" id="tB2">剩2分鐘・響2聲</button><button type="button" class="btn" id="tBE">時間到・語音</button></div>
     <div class="msg" id="msg"></div>
+    <button type="button" class="btn" id="tResetAll" style="border-color:var(--over);color:var(--over)">全部重置計時器（所有顯示螢幕停用、重新指定一台）</button>
     <div class="lab">場次（計時中需按兩次確認）</div>
     <div class="towns" id="tTowns"></div>
   </section>
@@ -1290,7 +1291,7 @@ const $=id=>document.getElementById(id);
 let T=null, tSeen=0, Pst=null, pSeen=0, net=0; const boards={};
 function fmt(ms){const neg=ms<0;let s=Math.ceil(Math.abs(ms)/1000);if(neg)s=Math.floor(Math.abs(ms)/1000);const m=Math.floor(s/60),r=s%60;return (neg?"+":"")+String(m).padStart(2,"0")+":"+String(r).padStart(2,"0")}
 // skew：本機與顯示螢幕電腦的時鐘差（取收到訊息延遲的最小值），避免兩台電腦時間不同步造成秒數不準
-let skew=null, disp={};
+let skew=null, disp={}, resetRev=0;
 const remain=()=>T?(T.running?T.endsAt+(skew||0)-Date.now():T.remainMs):0;
 let mt=0; function msg(t){ $("msg").textContent=t; clearTimeout(mt); mt=setTimeout(()=>$("msg").textContent="",3500); }
 function tcmd(a,v){ if(!net&&!navigator.onLine) msg("會場連線未連上，指令可能送不到"); VENUE.pub("timer/cmd",{a,v}); }
@@ -1330,7 +1331,8 @@ function render(){
     $("tMain").textContent=T.running?"暫停":(T.phase<0?"開始簡報":fresh?`開始${PHASES[T.phase].name}`:"繼續"); $("tMain").classList.toggle("pause",!!T.running);
     $("tNext").textContent=T.phase<0?"切到簡報階段":T.phase<2?`切到：${PHASES[T.phase+1].name}`:"結束本場";
     $("tTowns").querySelectorAll("button").forEach((b,i)=>{b.classList.toggle("cur",i===T.town);b.classList.toggle("done",(T.done||[]).includes(i))});
-  }
+  } else { $("cTown").textContent="—"; $("cPhase").textContent="待命"; $("cTime").textContent="--:--";
+    $("cNote").textContent=resetRev?"已全部重置：請到要用的那台計時器按「用這台當計時器顯示螢幕」":"等待計時器顯示螢幕"; }
   const pOn=Pst&&Pst.online!==false&&alive(pSeen,Pst._ts);
   $("nPlayer").className="dot"+(pOn?" on":"");
   $("pSt").textContent=pOn?(Pst&&Pst.engine==="ppt"?"已連上 PowerPoint 放映器（下一頁會照順序播動畫）":"已連上圖片版播放器（無特效、音效）"):(Pst?"播放器離線（顯示最後狀態）":"等待播放器…");
@@ -1346,12 +1348,19 @@ VENUE.start({onStatus:n=>{net=n;render();}});
 VENUE.sub("timer/state",o=>{ if(!o||o.role!=="display") return;
   // 某一條線路斷線留下的「離線」訊息：其他線路 20 秒內還有心跳就不理會
   if(o.online===false){ if(Date.now()-tSeen>20000){ tSeen=0; render(); } return; }
-  if(typeof o.rev!=="number") return;
+  if(typeof o.rev!=="number"||o.rev<resetRev) return;
   if(o.did&&typeof o._ts==="number"&&(Math.abs(Date.now()-o._ts)<30000||Math.abs(Date.now()-o._ts-(skew||0))<30000)) disp[o.did]=Date.now();
   // 只接受比目前新的狀態：重新連線時伺服器補送的舊狀態（保留訊息）一律略過，避免畫面跳回舊階段、一直加時間
   if(T&&(o.rev<T.rev||(o.rev===T.rev&&(o._ts||0)<(T._ts||0)))) return;
   if(typeof o._ts==="number"){ const d=Date.now()-o._ts; if(d>-600000&&d<600000&&(skew===null||d<skew)) skew=d; }
   T=o; tSeen=Date.now(); render(); });
+VENUE.sub("timer/reset",o=>{ if(!o||typeof o.rev!=="number") return; if(o.rev>resetRev){ resetRev=o.rev; if(!T||T.rev<o.rev){ T=null; tSeen=0; disp={}; skew=null; } render(); } });
+$("tResetAll").onclick=()=>{
+  if(!confirm("確定要全部重置計時器嗎？\n\n・所有開著的計時器顯示螢幕都會停用（停止計時、不響鈴、不接受遙控），畫面會變成紅色提示。\n・之後到你要用的那一台按「用這台當計時器顯示螢幕」，只有那台會恢復，從待命開始。\n・其他停用的視窗直接關掉即可。")) return;
+  const town=T&&Number.isInteger(T.town)?T.town:0;
+  VENUE.pub("timer/reset",{rev:Date.now(),town},true);
+  msg("已送出全部重置。請到要用的那台計時器按「用這台當計時器顯示螢幕」");
+};
 VENUE.sub("player/state",o=>{ if(!o) return; if(o.online===false){ if(Date.now()-pSeen>25000){ pSeen=0; render(); } return; }
   if(Pst&&(o._ts||0)<(Pst._ts||0)) return; Pst=o; pSeen=Date.now(); render(); });
 VENUE.sub("board/+/state",o=>{ if(!o||!o.id) return; const b=boards[o.id]; if(b&&(o._ts||0)<(b._ts||0)) return; boards[o.id]=Object.assign(o,{seen:Date.now()}); render(); });
