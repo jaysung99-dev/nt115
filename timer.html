@@ -419,8 +419,10 @@ function route(){const m=mode();
   for(const id of["home","display","remote","board"]){const el=document.getElementById(id);if(el)el.hidden=(id!==(m==="display"||m==="remote"||m==="board"?m:"home"));}
   render();}
 if(window.TIMER_MODE&&mode()!==window.TIMER_MODE) history.replaceState(null,"","#"+window.TIMER_MODE);
-let dispSeen=0, netN=0;
-function venuePush(){ if(mode()==="display"&&window.VENUE) VENUE.pub("timer/state",Object.assign({},S,{role:"display",online:true}),true); }
+let dispSeen=0, netN=0, rSkew=null;
+// 每個顯示螢幕視窗一個代號，讓主控台能發現同時開了兩個顯示螢幕
+const DID=(()=>{ try{ let v=sessionStorage.getItem("nt115-did"); if(!v){ v=Math.random().toString(36).slice(2,8); sessionStorage.setItem("nt115-did",v);} return v; }catch(e){ return Math.random().toString(36).slice(2,8); } })();
+function venuePush(){ if(mode()==="display"&&window.VENUE) VENUE.pub("timer/state",Object.assign({},S,{role:"display",online:true,did:DID}),true); }
 function venueStatus(){
   const m=mode();
   if(m==="display") setSync(netN>0?"會場連線：已連上（遙控器、主控台可操作）":"會場連線：未連上，請用同一台電腦的遙控器視窗或空白鍵");
@@ -434,7 +436,13 @@ function initVenue(){ if(!window.VENUE) return; const m=mode();
     setInterval(venuePush,15000);
   }else{
     VENUE.start({onStatus:n=>{netN=n;venueStatus();}});
-    VENUE.sub("timer/state",o=>{ if(!o||o.role!=="display") return; if(o.online===false){dispSeen=0;return venueStatus();} dispSeen=Date.now(); if(typeof o.rev==="number"){ const d=Object.assign({},o); delete d._id; delete d._ts; delete d.role; delete d.online; apply(d,"venue"); } venueStatus(); });
+    VENUE.sub("timer/state",o=>{ if(!o||o.role!=="display") return;
+      if(o.online===false){ if(Date.now()-dispSeen>20000){ dispSeen=0; venueStatus(); } return; }
+      if(typeof o.rev!=="number"||o.rev<S.rev) return; // 舊狀態（重新連線時補送的保留訊息）不採用
+      if(typeof o._ts==="number"){ const d=Date.now()-o._ts; if(d>-600000&&d<600000&&(rSkew===null||d<rSkew)) rSkew=d; }
+      dispSeen=Date.now(); const d=Object.assign({},o); delete d._id; delete d._ts; delete d.role; delete d.online; delete d.did;
+      if(d.running&&rSkew) d.endsAt+=rSkew; // 換算成本機時鐘
+      apply(d,"venue"); venueStatus(); });
     setInterval(venueStatus,5000);
   }
 }
