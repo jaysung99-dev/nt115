@@ -70,7 +70,8 @@ details li{margin:.35em 0;line-height:1.6;color:#D5DEDC}
     <button type="button" class="btn main" id="tMain">開始</button>
     <div class="row r2"><button type="button" class="btn" id="tPrev">上一階段</button><button type="button" class="btn" id="tNext">下一階段</button></div>
     <div class="row r4"><button type="button" class="btn mono" data-adj="-60">−1分</button><button type="button" class="btn mono" data-adj="-10">−10秒</button><button type="button" class="btn mono" data-adj="10">+10秒</button><button type="button" class="btn mono" data-adj="60">+1分</button></div>
-    <div class="row r2"><button type="button" class="btn" id="tReset">本階段重來</button><button type="button" class="btn" id="tBell">手動響鈴</button></div>
+    <div class="row r2"><button type="button" class="btn" id="tReset">本階段重來</button><button type="button" class="btn" id="tBell">手動響鈴（1聲）</button></div>
+    <div class="row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><button type="button" class="btn" id="tB3">剩3分鐘・響1聲</button><button type="button" class="btn" id="tB2">剩2分鐘・響2聲</button><button type="button" class="btn" id="tBE">時間到・鈴＋語音</button></div>
     <div class="msg" id="msg"></div>
     <div class="lab">場次（計時中需按兩次確認）</div>
     <div class="towns" id="tTowns"></div>
@@ -1305,6 +1306,7 @@ $("tNext").onclick=()=>{ if(!T||T.phase<0) return tcmd("step",1); confirmTap($("
 $("tPrev").onclick=()=>confirmTap($("tPrev"),"prev",()=>tcmd("step",-1));
 $("tReset").onclick=()=>confirmTap($("tReset"),"reset",()=>tcmd("reset"));
 $("tBell").onclick=()=>tcmd("bell",1);
+$("tB3").onclick=()=>tcmd("bell",1); $("tB2").onclick=()=>tcmd("bell",2); $("tBE").onclick=()=>tcmd("bell","end");
 document.querySelectorAll("[data-adj]").forEach(b=>b.onclick=()=>tcmd("adj",+b.dataset.adj));
 $("pPrev").onclick=()=>pcmd("prev"); $("pNext").onclick=()=>pcmd("next"); $("pMenu").onclick=()=>pcmd("menu");
 $("pFollow").onclick=()=>{ if(!T) return msg("尚未收到計時器狀態"); pcmd("town",T.town); };
