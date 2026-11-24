@@ -45,7 +45,7 @@ button:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
   <h1>115年鄉鎮市考核　簡報播放器</h1>
   <p>點公所名稱就開始播放（自動全螢幕）。翻頁用鍵盤左右鍵、PageUp／PageDown 或簡報筆。<br>播放中按 M 回到這個選單；全螢幕時長按 Esc 才會離開。</p>
   <div class="grid" id="grid"></div>
-  <div class="foot"><span><i class="dot" id="netDot"></i><span id="netTx">會場連線中…</span></span><span>影片頁（竹山鎮）請用「備案_原始簡報」資料夾的 PowerPoint 播放</span></div>
+  <div class="foot"><span><i class="dot" id="netDot"></i><span id="netTx">會場連線中…</span></span><span>這是圖片備案版：沒有動畫特效、音效、影片。主要請用「1_PowerPoint放映器（主要）」</span></div>
 </section>
 <section id="play" aria-label="簡報播放">
   <div id="stage"></div>
@@ -1267,7 +1267,7 @@ function openTown(i){
 function show(n){
   if(!P.pages) return; n=Math.max(1,Math.min(P.pages,n)); P.page=n;
   const media=(SL[TOWNS[P.town]]?.media||[]).includes(n);
-  $("stage").innerHTML=`<img alt="${TOWNS[P.town]}簡報第${n}頁" src="${src(P.town,n)}">`+(media?`<div class="media">此頁含影片：請改用「備案_原始簡報」以 PowerPoint 播放這一頁</div>`:"");
+  $("stage").innerHTML=`<img alt="${TOWNS[P.town]}簡報第${n}頁" src="${src(P.town,n)}">`+(media?`<div class="media">此頁含影片：請改用「PowerPoint 放映器」播放這一頁</div>`:"");
   $("bPg").textContent=`${n} / ${P.pages}`; push();
 }
 function toMenu(){ P.view="menu"; tok++; $("play").classList.remove("on"); $("menu").hidden=false; markMenu(); push(); }

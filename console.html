@@ -99,8 +99,8 @@ details li{margin:.35em 0;line-height:1.6;color:#D5DEDC}
     <li>主控台網址打不開：開「1_主控台\備案_離線版\主控台.html」，功能相同。</li>
     <li>上方「會場連線」紅燈：會場網路不通。各系統仍可各自操作：計時器用顯示螢幕那台的遙控器視窗或空白鍵；播放器在主控電腦用鍵盤或簡報筆翻頁；委員自己點公所。</li>
     <li>計時器紅燈：計時器那台的顯示螢幕沒開或當掉，請重新開啟網址 jaysung99-dev.github.io/nt115/timer.html（時間會接續，不會歸零）；網址打不開就開「2_計時器\備案_離線版\計時器_顯示螢幕.html」。</li>
-    <li>播放器紅燈或畫面卡住：在主控電腦重新開啟「簡報播放器」；仍不行就開同資料夾的「備案_網址版」，再不行就開「4_簡報播放器\備案_原始簡報\用PowerPoint播放.bat」。</li>
-    <li>竹山鎮影片頁（第 29、41 頁）：圖片版不會播影片，請用 PowerPoint 備案播放這兩頁。</li>
+    <li>播放器紅燈或畫面卡住：在主控電腦重新開「4_簡報播放器\1_PowerPoint放映器（主要）\PowerPoint放映器.bat」；仍不行才用「2_備案_圖片版\簡報播放器.html」或「3_備案_網址版」（圖片版沒有特效、音效、影片）。</li>
+    <li>特效、音效、影片（例如竹山鎮第 29、41 頁）：PowerPoint 放映器會照原檔播放；圖片版不會播，用圖片版時遇到這些頁要改開 PowerPoint 放映器。</li>
     <li>委員電腦沒出現在清單：請該台重新開啟委員儀表板網址；網址打不開就開「3_委員儀表板\備案_離線版\委員儀表板.html」。</li>
   </ul>
 </details>
@@ -1330,7 +1330,7 @@ function render(){
   }
   const pOn=Pst&&Pst.online!==false&&alive(pSeen,Pst._ts);
   $("nPlayer").className="dot"+(pOn?" on":"");
-  $("pSt").textContent=pOn?"已連上":(Pst?"播放器離線（顯示最後狀態）":"等待播放器…");
+  $("pSt").textContent=pOn?(Pst&&Pst.engine==="ppt"?"已連上 PowerPoint 放映器（下一頁會照順序播動畫）":"已連上圖片版播放器（無特效、音效）"):(Pst?"播放器離線（顯示最後狀態）":"等待播放器…");
   if(Pst){ $("pTown").textContent=Pst.view==="play"&&Pst.name?Pst.name:"—"; $("pView").textContent=Pst.view==="play"?"播放中":"選單"; $("pPg").textContent=Pst.view==="play"?`${Pst.page||0} / ${Pst.pages||0}`:"— / —";
     $("pTowns").querySelectorAll("button").forEach((b,i)=>b.classList.toggle("cur",Pst.view==="play"&&i===Pst.town)); }
   const list=Object.values(boards).filter(b=>b.online!==false&&alive(b.seen,b._ts));
