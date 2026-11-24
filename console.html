@@ -43,6 +43,18 @@ h2 small{font-size:13px;font-weight:500;color:var(--muted)}
 .lab{font-size:13px;color:var(--muted);letter-spacing:.06em}
 .msg{min-height:1.3em;color:var(--warn);font-size:14px}
 .blist{display:grid;gap:6px}
+.pshot{position:relative;background:#000;border:1px solid var(--line);border-radius:10px;aspect-ratio:16/9;overflow:hidden;cursor:ns-resize}
+.pshot img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.pshot .hint{position:absolute;right:6px;bottom:4px;font-size:12px;color:#cfd8d6;background:rgba(0,0,0,.6);padding:1px 6px;border-radius:6px}
+.pshot .none{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px}
+.pages{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:300px;overflow:auto;padding:2px}
+.pages button{position:relative;display:block;height:0;padding:56.25% 0 0;border:2px solid var(--line);border-radius:8px;background:#000;overflow:hidden;color:#fff}
+.pages button img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.pages button .n{position:absolute;left:3px;top:2px;background:rgba(0,0,0,.72);font:700 13px var(--mono,monospace);padding:0 5px;border-radius:5px}
+.pages button.noimg .n{inset:0;display:grid;place-items:center;background:none;font-size:18px}
+.pages button.cur{border-color:var(--talk);box-shadow:0 0 0 2px color-mix(in srgb,var(--talk) 40%,transparent)}
+.pjump{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center}
+.pjump input{min-width:0;font:inherit;font-size:18px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:inherit}
 .blist div{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:9px;background:var(--panel2);font-size:14px}
 .empty{color:var(--muted);font-size:14px}
 .sel{display:flex;gap:8px} .sel select{flex:1;min-width:0;padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--panel2)}
@@ -82,6 +94,9 @@ details li{margin:.35em 0;line-height:1.6;color:#D5DEDC}
     <div class="big"><span class="town" id="pTown">—</span><span class="pill" id="pView">—</span></div>
     <div class="time" id="pPg" style="--ph:#EEF3F2;font-size:40px">— / —</div>
     <div class="row r3"><button type="button" class="btn" id="pPrev">◀ 上一頁</button><button type="button" class="btn" id="pNext">下一頁 ▶</button><button type="button" class="btn" id="pMenu">回選單</button></div>
+    <div class="pshot" id="pShotBox" title="在畫面上滾動滑鼠滾輪可上下翻頁"><img id="pShot" alt="目前頁面" hidden><div class="none" id="pShotNone">尚未播放</div><span class="hint">滾輪翻頁</span></div>
+    <div class="pjump"><span class="lab" style="margin:0">跳到第</span><input id="pJump" type="number" min="1" inputmode="numeric" placeholder="頁碼，按 Enter"><button type="button" class="btn" id="pGo">跳頁</button></div>
+    <div class="pages" id="pPages"></div>
     <button type="button" class="btn" id="pFollow">播放器切到計時器目前場次</button>
     <div class="lab">直接播放某公所</div>
     <div class="towns" id="pTowns"></div>
@@ -1311,6 +1326,28 @@ $("tReset").onclick=()=>confirmTap($("tReset"),"reset",()=>tcmd("reset"));
 $("tBell").onclick=()=>tcmd("bell",1);
 $("tB3").onclick=()=>tcmd("bell",1); $("tB2").onclick=()=>tcmd("bell",2); $("tBE").onclick=()=>tcmd("bell","end");
 document.querySelectorAll("[data-adj]").forEach(b=>b.onclick=()=>tcmd("adj",+b.dataset.adj));
+// 頁面縮圖：網址版在 slides/，離線版主控台往上找播放器資料夾的圖片；都找不到就只顯示頁碼
+const SLIDE_BASES=["slides/","../../4_簡報播放器/2_備案_圖片版/slides/","../../3_委員儀表板/備案_離線版/slides/"];
+const pad3=n=>String(n).padStart(3,"0");
+function thumb(img,name,n,k){ k=k||0; if(k>=SLIDE_BASES.length){ img.remove(); return false; }
+  img.onerror=()=>{ if(!thumb(img,name,n,k+1)){ const b=img.closest("button"); if(b) b.classList.add("noimg"); } }; img.src=SLIDE_BASES[k]+encodeURIComponent(name)+"/"+pad3(n)+".jpg"; return true; }
+let pKey="", pShotKey="";
+function renderPages(){
+  const play=Pst&&Pst.view==="play"&&Pst.name&&Pst.pages>0;
+  const key=play?Pst.name+"|"+Pst.pages:"";
+  if(key!==pKey){ pKey=key; const box=$("pPages");
+    box.innerHTML=play?Array.from({length:Pst.pages},(_,i)=>`<button type="button" data-n="${i+1}" title="跳到第 ${i+1} 頁"><img alt="" loading="lazy"><span class="n">${i+1}</span></button>`).join(""):"";
+    box.querySelectorAll("button").forEach(b=>{ thumb(b.querySelector("img"),Pst.name,+b.dataset.n); b.onclick=()=>pcmd("page",+b.dataset.n); }); }
+  const cur=play?Pst.page:0;
+  $("pPages").querySelectorAll("button").forEach(b=>{ const on=+b.dataset.n===cur; if(on&&!b.classList.contains("cur")){ const box=$("pPages"); const top=b.offsetTop-box.offsetTop; if(top<box.scrollTop||top+b.offsetHeight>box.scrollTop+box.clientHeight) box.scrollTop=top-box.clientHeight/2+b.offsetHeight/2; } b.classList.toggle("cur",on); });
+  const sk=play?Pst.name+"|"+cur:"";
+  if(sk!==pShotKey){ pShotKey=sk; const im=$("pShot");
+    if(play&&cur>0){ im.hidden=false; $("pShotNone").hidden=true; let k=0; im.onerror=()=>{ k++; if(k<SLIDE_BASES.length) im.src=SLIDE_BASES[k]+encodeURIComponent(Pst.name)+"/"+pad3(cur)+".jpg"; else { im.hidden=true; $("pShotNone").hidden=false; $("pShotNone").textContent=`第 ${cur} 頁（這台沒有預覽圖）`; } }; im.src=SLIDE_BASES[0]+encodeURIComponent(Pst.name)+"/"+pad3(cur)+".jpg"; }
+    else { im.hidden=true; $("pShotNone").hidden=false; $("pShotNone").textContent=Pst&&Pst.view==="play"?"播放中":"尚未播放"; } }
+}
+let wheelT=0; $("pShotBox").addEventListener("wheel",e=>{ e.preventDefault(); const now=Date.now(); if(now-wheelT<350) return; wheelT=now; pcmd(e.deltaY>0?"next":"prev"); },{passive:false});
+const jump=()=>{ const n=parseInt($("pJump").value,10); if(!Pst||!Pst.pages) return msg("播放器還沒在播放簡報"); if(!(n>=1&&n<=Pst.pages)) return msg(`請輸入 1～${Pst.pages}`); pcmd("page",n); $("pJump").select(); };
+$("pGo").onclick=jump; $("pJump").addEventListener("keydown",e=>{ if(e.key==="Enter") jump(); });
 $("pPrev").onclick=()=>pcmd("prev"); $("pNext").onclick=()=>pcmd("next"); $("pMenu").onclick=()=>pcmd("menu");
 $("pFollow").onclick=()=>{ if(!T) return msg("尚未收到計時器狀態"); pcmd("town",T.town); };
 $("bGo").onclick=()=>VENUE.pub("board/cmd",{a:"town",v:+$("bSel").value});
@@ -1339,6 +1376,7 @@ function render(){
   $("pSt").textContent=(pl.length>1?`注意：同時開著 ${nPpt} 個 PowerPoint 放映器、${nImg} 個圖片版，請只留 PowerPoint 放映器　`:"")+(pOn?(Pst&&Pst.engine==="ppt"?"已連上 PowerPoint 放映器（下一頁會照順序播動畫）":"已連上圖片版播放器（無特效、音效）"):(Pst?"播放器離線（顯示最後狀態）":"等待播放器…"));
   if(Pst){ $("pTown").textContent=Pst.view==="play"&&Pst.name?Pst.name:"—"; $("pView").textContent=Pst.view==="play"?"播放中":"選單"; $("pPg").textContent=Pst.view==="play"?`${Pst.page||0} / ${Pst.pages||0}`:"— / —";
     $("pTowns").querySelectorAll("button").forEach((b,i)=>b.classList.toggle("cur",Pst.view==="play"&&i===Pst.town)); }
+  renderPages();
   const list=Object.values(boards).filter(b=>b.online!==false&&alive(b.seen,b._ts));
   $("tBoard").textContent=list.length; $("nBoard").className="dot"+(list.length?" on":"");
   $("bList").innerHTML=list.length?list.sort((a,b)=>a.id<b.id?-1:1).map(b=>`<div><span>委員電腦 ${b.id}</span><span>${b.name||"—"}${b.pages?`　第 ${b.page}/${b.pages} 頁`:""}</span></div>`).join(""):`<div class="empty">尚無委員電腦連線（委員電腦需開啟「委員儀表板」且有網路）</div>`;
