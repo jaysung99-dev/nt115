@@ -132,7 +132,7 @@ button:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
   <div class="grid3m" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
     <button class="btn" id="bB3" type="button">剩3分鐘<br><small>響1聲</small></button>
     <button class="btn" id="bB2" type="button">剩2分鐘<br><small>響2聲</small></button>
-    <button class="btn" id="bBE" type="button">時間到<br><small>鈴聲＋語音</small></button>
+    <button class="btn" id="bBE" type="button">時間到<br><small>語音</small></button>
   </div>
   <div class="r-msg" id="rMsg"></div>
   <div class="sec">場次（點選切換，執行中需按兩次確認）</div>
@@ -237,7 +237,7 @@ const PHASES=[
 ];
 const TOWNS=[["鹿谷鄉","09:10"],["集集鎮","09:35"],["名間鄉","10:00"],["南投市","10:35"],["仁愛鄉","11:00"],["水里鄉","11:25"],
              ["埔里鎮","13:40"],["竹山鎮","14:05"],["中寮鄉","14:30"],["魚池鄉","15:10"],["信義鄉","15:35"],["草屯鎮","16:00"],["國姓鄉","16:25"]];
-// 提示：簡報剩3分響鈴1聲、剩2分響鈴2聲、時間到響鈴3聲並播語音「時間到，請停止簡報」；提問、回覆時間到各響鈴1聲
+// 提示：簡報剩3分響鈴1聲、剩2分響鈴2聲、時間到播語音「時間到，請停止簡報」；提問、回覆時間到各響鈴1聲
 const BELLS={0:[[180,1],[120,2],[0,"end"]],1:[[0,1]],2:[[0,1]]};
 
 // ---- 狀態 ----
@@ -328,8 +328,9 @@ function say(text,delayMs=0,times=2){
 const END_SPEECH="時間到，請停止簡報。"; // 播放兩次
 function ring(n,key=soundKey){if(!ac)return; if(ac.state!=="running"){try{ac.resume()}catch(e){}} const s=SOUNDS[key]; const out=ac.createGain(); out.gain.value=0.5; out.connect(ac.destination);
   const t=ac.currentTime+0.05; for(let i=0;i<n;i++) s.play(out,t+i*(s.len+0.5));}
-// 時間到：先響 3 聲，再播語音兩次（語音失敗時至少有鈴聲）
-function alarm(v){ if(v==="end"){ ring(3); say(END_SPEECH,3*(SOUNDS[soundKey].len+0.5)*1000); } else ring(+v||1); }
+// 時間到：只播語音（兩次）；這台電腦完全無法播語音時才改響鈴，避免無聲
+function alarm(v){ if(v==="end"){ if(!sayEnd()) ring(3); } else ring(+v||1); }
+function sayEnd(){ const ss=window.speechSynthesis; if(!ss||typeof SpeechSynthesisUtterance==="undefined") return false; say(END_SPEECH); return true; }
 let fired={};
 function resetFired(){fired={};const r=remain();const b=BELLS[S.phase]||[];
   for(const [at] of b){ if(r<=at*1000) fired[S.town+"-"+S.phase+"-"+at]=true; }} // 已過的門檻不補響
@@ -401,7 +402,7 @@ async function ensureAudio(){ if(!ac){ac=new (window.AudioContext||window.webkit
 function initDisplay(){
   const pick=document.getElementById("sndPick");
   const tests={warn:()=>alarm(1), warn2:()=>alarm(2), voice:()=>alarm("end")};
-  pick.innerHTML=`<button type="button" data-t="warn">試聽：剩 3 分鐘（1 聲）</button><button type="button" data-t="warn2">試聽：剩 2 分鐘（2 聲）</button><button type="button" data-t="voice">試聽：時間到（3聲＋語音）</button>`;
+  pick.innerHTML=`<button type="button" data-t="warn">試聽：剩 3 分鐘（1 聲）</button><button type="button" data-t="warn2">試聽：剩 2 分鐘（2 聲）</button><button type="button" data-t="voice">試聽：時間到語音</button>`;
   pick.querySelectorAll("button").forEach(b=>b.onclick=async()=>{try{await ensureAudio(); tests[b.dataset.t]();}catch(e){}});
   try{window.speechSynthesis?.getVoices();}catch(e){}
   unlockBtn.onclick=async()=>{
