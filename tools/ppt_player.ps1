@@ -36,7 +36,7 @@ function Get-View {
 function Open-Town([int]$i) {
   if ($i -lt 0 -or $i -ge $TOWNS.Count) { return }
   $f = Find-File $i
-  $script:town = $i
+  $script:town = $i; $script:resume = 1
   if (-not $f) { Close-Current; Set-Status ($TOWNS[$i] + '：資料夾裡沒有這家的簡報檔'); Push-State; return }
   Set-Status ('開啟中：' + $f.Name)
   try {
@@ -63,12 +63,34 @@ function Open-Town([int]$i) {
   }
   Push-State
 }
+# 主控台「全螢幕放映」：放映中就把放映視窗拉到最前面；不小心按 Esc 退出時，從剛才那頁重新全螢幕放映
+$script:resume = 1
+function Start-Full {
+  if ($script:kind -eq 'ppt' -and $script:pres) {
+    $n = Show-Count
+    if ($n -gt 0) { try { $script:pres.SlideShowWindow.Activate() } catch {}; Set-Status '已切回全螢幕放映'; Push-State; return }
+    try {
+      $total = [int]$script:pres.Slides.Count
+      $start = [Math]::Max(1, [Math]::Min($total, [int]$script:resume))
+      $ss = $script:pres.SlideShowSettings
+      try { $ss.ShowType = 1; $ss.LoopUntilStopped = 0; $ss.AdvanceMode = 2 } catch {}
+      $ss.RangeType = 2; $ss.StartingSlide = $start; $ss.EndingSlide = $total
+      [void]$ss.Run()
+      try { $script:pres.SlideShowWindow.Activate() } catch {}
+      $script:view = 'play'; $script:page = $start; $script:pages = $total
+      Set-Status ('全螢幕放映：' + $TOWNS[$script:town] + '（從第 ' + $start + ' 頁）')
+      Push-State; return
+    } catch {}
+  }
+  if ($script:town -ge 0) { Open-Town $script:town }
+}
 function Do-Cmd($c) {
   if (-not $c) { return }
   $a = [string]$c.a
   switch ($a) {
     'town' { Open-Town ([int]$c.v) }
     'menu' { Close-Current; Show-Form; Push-State }
+    'show' { Start-Full }
     default {
       if ($script:kind -eq 'pdf') {
         if ($a -eq 'next') { [System.Windows.Forms.SendKeys]::SendWait('{PGDN}') }
@@ -96,7 +118,7 @@ function Poll-Show {
   $script:lastPoll = Get-Date
   $n = Show-Count
   if ($n -eq 0) {
-    if ($script:view -eq 'play') { $script:view = 'menu'; $script:page = 0; Set-Status '放映已結束（按 Esc 或播完），點公所可再播放'; Push-State; Show-Form }
+    if ($script:view -eq 'play') { if ($script:page -ge 1) { $script:resume = $script:page }; $script:view = 'menu'; $script:page = 0; Set-Status '放映已結束（按 Esc 或播完），點公所可再播放'; Push-State; Show-Form }
     return
   }
   if ($n -lt 0) { return }
