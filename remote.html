@@ -38,6 +38,12 @@ button:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 .d-bar{height:14px;border-radius:7px;background:var(--line);overflow:hidden}
 .d-bar i{display:block;height:100%;background:var(--ph);width:0%;transition:width .5s linear}
 .d-steps,#display .d-sync{display:none!important}
+/* 白底：顯示螢幕改白底、數字依階段上色（使用者 11/24 選白底黃字）；白底上用較深的色才看得清楚 */
+:root:has(#display:not([hidden])){--brief:#D4A100;--warn:#E86A00;--over:#D9221B;--ask:#1C7ED6;--reply:#7A4BD6;--muted:#5A6466;color-scheme:light}
+body:has(#display:not([hidden])){background:#FFFFFF}
+#display,#display .d-town,#display .d-note{color:#111}
+#display .d-phase{background:var(--ph);color:#fff}
+#display .d-bar{background:#E2E2E2}
 .d-time.long{font-size:clamp(90px,min(25vw,50vh),500px)}
 .d-steps{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
 .d-steps span{flex:1;min-width:120px;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--line);color:var(--muted);font-size:clamp(14px,1.8vw,24px)}
