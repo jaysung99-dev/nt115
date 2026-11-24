@@ -19,6 +19,8 @@ public static class NtFg {
   [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
   [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool f);
   [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
+  [DllImport("user32.dll")] static extern void keybd_event(byte v, byte sc, uint f, UIntPtr e);
+  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint f);
   public static void Allow() { try { AllowSetForegroundWindow(-1); } catch {} }
   public static bool IsFront(IntPtr h) { return GetForegroundWindow() == h; }
   public static void Front(IntPtr h) {
@@ -28,6 +30,10 @@ public static class NtFg {
     uint tg = GetWindowThreadProcessId(h, IntPtr.Zero);
     if (fg != me) AttachThreadInput(me, fg, true);
     if (tg != me) AttachThreadInput(me, tg, true);
+    // 放映視窗設為「最上層」，就算前景被別的程式佔住，畫面也一定蓋在最上面
+    SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040);
+    // 按一下 Alt 解除 Windows 的前景鎖定，讓簡報筆、鍵盤的翻頁鍵送到放映視窗
+    if (GetForegroundWindow() != h) { keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero); }
     ShowWindow(h, 5); BringWindowToTop(h); SetForegroundWindow(h);
     if (tg != me) AttachThreadInput(me, tg, false);
     if (fg != me) AttachThreadInput(me, fg, false);
