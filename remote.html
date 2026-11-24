@@ -6,8 +6,8 @@
 <style>
 /* 投影用深色單一主題：大字倒數置中，遙控頁為單欄按鈕 */
 :root{
-  --bg:#0E1416; --panel:#172126; --line:#26343A; --fg:#EEF3F2; --muted:#93A4A6;
-  --talk:#3FBF8F; --warn:#F2B33D; --over:#F0524A; --ask:#4FA3E8; --reply:#A98BF0;
+  --bg:#0E1416; --panel:#1C282D; --line:#3A4C53; --fg:#FFFFFF; --muted:#C9D5D7;
+  --talk:#3DF5A6; --warn:#FFD028; --over:#FF4D42; --ask:#4DB8FF; --reply:#C9A8FF;
   --display:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
   --mono:"IBM Plex Mono","Consolas",ui-monospace,monospace;
   color-scheme:dark;
@@ -32,17 +32,17 @@ button:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 .d-town{font-size:clamp(28px,6vw,88px);font-weight:900;letter-spacing:.04em}
 .d-slot{font-family:var(--mono);color:var(--muted);font-size:clamp(14px,2vw,26px)}
 .d-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1vh;min-height:0}
-.d-phase{font-size:clamp(22px,4.5vw,64px);font-weight:700;padding:.15em .8em;border-radius:999px;background:color-mix(in srgb,var(--ph) 18%,transparent);color:var(--ph)}
-.d-time{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;font-size:clamp(90px,24vw,360px);line-height:1;color:var(--ph);transition:color .3s}
+.d-phase{font-size:clamp(22px,4.5vw,64px);font-weight:700;padding:.15em .8em;border-radius:999px;background:color-mix(in srgb,var(--ph) 26%,transparent);color:var(--ph)}
+.d-time{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(90px,24vw,360px);line-height:1;color:var(--ph);transition:color .3s}
 .d-note{font-size:clamp(18px,3vw,44px);font-weight:700;min-height:1.3em;color:var(--fg)}
 .d-bar{height:14px;border-radius:7px;background:var(--line);overflow:hidden}
 .d-bar i{display:block;height:100%;background:var(--ph);width:0%;transition:width .5s linear}
 .d-steps{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
 .d-steps span{flex:1;min-width:120px;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--line);color:var(--muted);font-size:clamp(14px,1.8vw,24px)}
 .d-steps span.on{border-color:var(--ph);color:var(--fg);background:color-mix(in srgb,var(--ph) 14%,transparent)}
-.d-steps span.done{opacity:.45}
+.d-steps span.done{opacity:.6}
 .paused .d-time{animation:blink 1.2s steps(2) infinite}
-@keyframes blink{50%{opacity:.35}}
+@keyframes blink{50%{opacity:.5}}
 @media (prefers-reduced-motion:reduce){.paused .d-time{animation:none;opacity:.6}}
 #unlock{position:fixed;inset:0;background:rgba(8,12,13,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:5;text-align:center;padding:24px}
 #unlock button{font-size:24px;font-weight:700;padding:18px 34px;border-radius:14px;border:0;background:var(--talk);color:#06231A}
