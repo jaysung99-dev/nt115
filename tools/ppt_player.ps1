@@ -142,6 +142,39 @@ function Poll-Video {
     if (-not $alive -and $script:vEnd) { Stop-Video $false }
   }
 }
+# 只播聲音：主控台按某個聲音檔，就在背景播它的聲音（不開視窗、不蓋住簡報、不影響翻頁）
+# 檔案放在 影片備案\（mp4、mp3、wav、m4a、wma 都可以），檔名開頭 NN_ 是公所序號
+$script:wmp = $null; $script:aud = ''; $script:audT = $null
+function Media-List {
+  $vd = Join-Path $dir '影片備案'
+  if (-not (Test-Path -LiteralPath $vd)) { return @() }
+  return @(Get-ChildItem -LiteralPath $vd -File | Where-Object { $_.Extension -match '^\.(mp4|mp3|wav|m4a|wma|wmv)$' } | Sort-Object Name | ForEach-Object { $_.Name })
+}
+function Play-Audio([string]$name) {
+  $vd = Join-Path $dir '影片備案'
+  $f = Get-ChildItem -LiteralPath $vd -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq $name } | Select-Object -First 1
+  if (-not $f) { Set-Status ('找不到聲音檔：' + $name); return }
+  try {
+    if (-not $script:wmp) { $script:wmp = New-Object -ComObject WMPlayer.OCX }
+    $script:wmp.settings.volume = 100
+    $script:wmp.URL = $f.FullName
+    $script:wmp.controls.play()
+    $script:aud = $f.Name; $script:audT = Get-Date
+    Set-Status ('播放聲音：' + $f.Name + '（簡報照常進行）')
+  } catch { $script:aud = ''; Set-Status ('聲音播不出來：' + $f.Name + '，可直接雙擊這個檔案播放') }
+  Push-State
+  if ($script:kind -eq 'ppt' -and $script:pres) { try { if ((Show-Count) -gt 0) { $script:pres.SlideShowWindow.Activate() } } catch {} }
+}
+function Stop-Audio {
+  try { if ($script:wmp) { $script:wmp.controls.stop() } } catch {}
+  $script:aud = ''; $script:audT = $null; Set-Status '聲音已停止'; Push-State
+}
+function Poll-Audio {
+  if (-not $script:aud -or -not $script:wmp) { return }
+  if (((Get-Date) - $script:audT).TotalSeconds -lt 2) { return }
+  try { $st = [int]$script:wmp.playState } catch { return }
+  if ($st -eq 1 -or $st -eq 8 -or $st -eq 0) { $script:aud = ''; $script:audT = $null; Set-Status '聲音播完了'; Push-State }
+}
 function Do-Cmd($c) {
   if (-not $c) { return }
   $a = [string]$c.a
@@ -151,6 +184,8 @@ function Do-Cmd($c) {
     'show' { Start-Full }
     'video' { Start-Video }
     'videostop' { Stop-Video $true }
+    'audio' { Play-Audio ([string]$c.v) }
+    'audiostop' { Stop-Audio }
     default {
       if ($script:kind -eq 'pdf') {
         if ($a -eq 'next') { [System.Windows.Forms.SendKeys]::SendWait('{PGDN}') }
@@ -207,6 +242,7 @@ function State-Json([bool]$online) {
   if ($online) {
     $o.view = $script:view; $o.town = $script:town; $o.name = $(if ($script:town -ge 0) { $TOWNS[$script:town] } else { '' })
     $o.page = $script:page; $o.pages = $script:pages; $o.engine = 'ppt'; $o.pid = $script:PLAYERID
+    $o.media = [string[]](Media-List); $o.aud = $script:aud
   }
   $o._id = Rid; $o._ts = Now-Ms
   return ($o | ConvertTo-Json -Compress)
@@ -308,7 +344,7 @@ function Pump {
 }
 $script:beat = Get-Date
 function Tick {
-  Pump; Poll-Show; Poll-Video
+  Pump; Poll-Show; Poll-Video; Poll-Audio
   if (((Get-Date) - $script:beat).TotalSeconds -ge 20) { $script:beat = Get-Date; Push-State }
 }
 

@@ -56,6 +56,11 @@ h2 small{font-size:13px;font-weight:500;color:var(--muted)}
 .pjump{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center}
 .pjump input{min-width:0;font:inherit;font-size:18px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:inherit}
 .blist div{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:9px;background:var(--panel2);font-size:14px}
+.auds{display:grid;gap:6px}
+.auds button{display:flex;justify-content:space-between;gap:8px;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);font-size:15px;font-weight:700}
+.auds button.on{border-color:var(--talk);background:color-mix(in srgb,var(--talk) 18%,transparent)}
+.auds button small{color:var(--muted);font-weight:500}
+.towns button .snd{color:var(--talk);margin-left:.3em}
 .empty{color:var(--muted);font-size:14px}
 .sel{display:flex;gap:8px} .sel select{flex:1;min-width:0;padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--panel2)}
 details{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:0 12px 12px;padding:10px 14px}
@@ -94,7 +99,6 @@ details li{margin:.35em 0;line-height:1.6;color:#D5DEDC}
     <div class="big"><span class="town" id="pTown">—</span><span class="pill" id="pView">—</span></div>
     <div class="time" id="pPg" style="--ph:#EEF3F2;font-size:40px">— / —</div>
     <button type="button" class="btn" id="pShow" style="background:var(--talk);color:#06231A;border:0;font-size:18px">⛶ 全螢幕放映（從目前頁）</button>
-    <div class="row r2"><button type="button" class="btn" id="pVid">▶ 播放本頁影片（備案）</button><button type="button" class="btn" id="pVidStop">■ 停止影片、回簡報</button></div>
     <div class="row r3"><button type="button" class="btn" id="pPrev">◀ 上一頁</button><button type="button" class="btn" id="pNext">下一頁 ▶</button><button type="button" class="btn" id="pMenu">結束放映</button></div>
     <div class="pshot" id="pShotBox" title="在畫面上滾動滑鼠滾輪可上下翻頁"><img id="pShot" alt="目前頁面" hidden><div class="none" id="pShotNone">尚未播放</div><span class="hint">滾輪翻頁</span></div>
     <div class="pjump"><span class="lab" style="margin:0">跳到第</span><input id="pJump" type="number" min="1" inputmode="numeric" placeholder="頁碼，按 Enter"><button type="button" class="btn" id="pGo">跳頁</button></div>
@@ -102,6 +106,9 @@ details li{margin:.35em 0;line-height:1.6;color:#D5DEDC}
     <button type="button" class="btn" id="pFollow">播放器切到計時器目前場次</button>
     <div class="lab">開啟某公所簡報（自動全螢幕放映）</div>
     <div class="towns" id="pTowns"></div>
+    <div class="lab">聲音檔（只播聲音、不蓋住簡報，簡報照常翻頁）</div>
+    <div class="auds" id="pAud"><div class="empty">放映器連上後會列出「影片備案」資料夾裡的檔案</div></div>
+    <button type="button" class="btn" id="pAudStop">■ 停止聲音</button>
   </section>
   <section id="secBoard" aria-label="委員儀表板">
     <h2>委員儀表板 <small>計時器換場次時會自動跟著切</small></h2>
@@ -1334,6 +1341,17 @@ const pad3=n=>String(n).padStart(3,"0");
 function thumb(img,name,n,k){ k=k||0; if(k>=SLIDE_BASES.length){ img.remove(); return false; }
   img.onerror=()=>{ if(!thumb(img,name,n,k+1)){ const b=img.closest("button"); if(b) b.classList.add("noimg"); } }; img.src=SLIDE_BASES[k]+encodeURIComponent(name)+"/"+pad3(n)+".jpg"; return true; }
 let pKey="", pShotKey="";
+let audKey="";
+function renderAud(){
+  const m=(Pst&&Array.isArray(Pst.media))?Pst.media:(Pst&&typeof Pst.media==="string"?[Pst.media]:[]), playing=(Pst&&Pst.aud)||"";
+  const key=m.join("|")+"#"+playing; if(key===audKey) return; audKey=key;
+  const byTown={}; m.forEach(n=>{const k=parseInt(n,10); if(k>=1) (byTown[k-1]=byTown[k-1]||[]).push(n);});
+  $("pTowns").querySelectorAll("button").forEach((b,i)=>{ let s=b.querySelector(".snd"); if(byTown[i]&&!s){ s=document.createElement("span"); s.className="snd"; s.textContent="🔊"+byTown[i].length; b.appendChild(s);} else if(!byTown[i]&&s) s.remove(); });
+  if(!m.length){ $("pAud").innerHTML=`<div class="empty">${Pst?"「影片備案」資料夾裡沒有聲音檔":"放映器連上後會列出「影片備案」資料夾裡的檔案"}</div>`; return; }
+  $("pAud").innerHTML=m.map(n=>{ const k=parseInt(n,10), town=TOWNS[k-1]||"", label=n.replace(/^\d+_[^_]+_/,"").replace(/\.[^.]+$/,"").replace(/_/g," ");
+    return `<button type="button" data-n="${n.replace(/"/g,"&quot;")}" class="${n===playing?"on":""}"><span>${n===playing?"🔊 播放中：":"▶ "}${String(k).padStart(2,"0")} ${town}　${label}</span><small>${n===playing?"再按一次重播":"只播聲音"}</small></button>`;}).join("");
+  $("pAud").querySelectorAll("button").forEach(b=>b.onclick=()=>pcmd("audio",b.dataset.n));
+}
 function renderPages(){
   const play=Pst&&Pst.view==="play"&&Pst.name&&Pst.pages>0;
   const key=play?Pst.name+"|"+Pst.pages:"";
@@ -1350,7 +1368,7 @@ function renderPages(){
 let wheelT=0; $("pShotBox").addEventListener("wheel",e=>{ e.preventDefault(); const now=Date.now(); if(now-wheelT<350) return; wheelT=now; pcmd(e.deltaY>0?"next":"prev"); },{passive:false});
 const jump=()=>{ const n=parseInt($("pJump").value,10); if(!Pst||!Pst.pages) return msg("播放器還沒在播放簡報"); if(!(n>=1&&n<=Pst.pages)) return msg(`請輸入 1～${Pst.pages}`); pcmd("page",n); $("pJump").select(); };
 $("pGo").onclick=jump; $("pJump").addEventListener("keydown",e=>{ if(e.key==="Enter") jump(); });
-$("pPrev").onclick=()=>pcmd("prev"); $("pNext").onclick=()=>pcmd("next"); $("pMenu").onclick=()=>pcmd("menu"); $("pShow").onclick=()=>pcmd("show"); $("pVid").onclick=()=>pcmd("video"); $("pVidStop").onclick=()=>pcmd("videostop");
+$("pPrev").onclick=()=>pcmd("prev"); $("pNext").onclick=()=>pcmd("next"); $("pMenu").onclick=()=>pcmd("menu"); $("pShow").onclick=()=>pcmd("show"); $("pAudStop").onclick=()=>pcmd("audiostop");
 $("pFollow").onclick=()=>{ if(!T) return msg("尚未收到計時器狀態"); pcmd("town",T.town); };
 $("bGo").onclick=()=>VENUE.pub("board/cmd",{a:"town",v:+$("bSel").value});
 $("bFollow").onclick=()=>{ if(!T) return msg("尚未收到計時器狀態"); VENUE.pub("board/cmd",{a:"town",v:T.town}); };
@@ -1378,7 +1396,7 @@ function render(){
   $("pSt").textContent=(pl.length>1?`注意：同時開著 ${nPpt} 個 PowerPoint 放映器、${nImg} 個圖片版，請只留 PowerPoint 放映器　`:"")+(pOn?(Pst&&Pst.engine==="ppt"?"已連上 PowerPoint 放映器（下一頁會照順序播動畫）":"注意：連上的是圖片版播放器（無特效、音效），請關掉，改開 PowerPoint 放映器"):(Pst?"播放器離線（顯示最後狀態）":"等待播放器…"));
   if(Pst){ $("pTown").textContent=Pst.view==="play"&&Pst.name?Pst.name:"—"; $("pView").textContent=Pst.view==="play"?"播放中":"選單"; $("pPg").textContent=Pst.view==="play"?`${Pst.page||0} / ${Pst.pages||0}`:"— / —";
     $("pTowns").querySelectorAll("button").forEach((b,i)=>b.classList.toggle("cur",Pst.view==="play"&&i===Pst.town)); }
-  renderPages();
+  renderPages(); renderAud();
   const list=Object.values(boards).filter(b=>b.online!==false&&alive(b.seen,b._ts));
   $("tBoard").textContent=list.length; $("nBoard").className="dot"+(list.length?" on":"");
   $("bList").innerHTML=list.length?list.sort((a,b)=>a.id<b.id?-1:1).map(b=>`<div><span>委員電腦 ${b.id}</span><span>${b.name||"—"}${b.pages?`　第 ${b.page}/${b.pages} 頁`:""}</span></div>`).join(""):`<div class="empty">尚無委員電腦連線（委員電腦需開啟「委員儀表板」且有網路）</div>`;
