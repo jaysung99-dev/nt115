@@ -115,6 +115,9 @@
 .bd-empty small{color:#8FA19F;font-size:.75em}
 .bd-toast{position:fixed;left:50%;top:12vh;transform:translateX(-50%);background:rgba(10,16,17,.92);color:#fff;padding:.7em 1.4em;border-radius:12px;font-size:1.15em;font-weight:700;z-index:40;border:1px solid #33413F}
 .bd-toast[hidden]{display:none}
+
+.bd-tbl tr.bd-avg td{color:#A9BBBD;font-weight:400;font-size:.85em;padding-top:.15em;padding-bottom:.45em}
+.bd-tbl tr:not(.bd-avg) td{border-bottom:none}
 </style>
 </head>
 <body>
@@ -1383,9 +1386,16 @@ document.addEventListener("keydown",e=>{
 });
 
 /* ---- 右欄數據（只呈現現況，不下結論） ---- */
+// 全縣平均：13 鄉鎮市同期數值的算術平均（增減率以兩年平均值計算）
+function avgOf(i){
+  const n=D.towns.length; let a=0,b=0; D.towns.forEach(t=>{a+=+t.cmp[i].y114||0; b+=+t.cmp[i].y115||0;});
+  a=Math.round(a/n*100)/100; b=Math.round(b/n*100)/100; const d=b-a, r=a?d/a*100:0;
+  return {y114:a,y115:b,diff:(d>=0?"+":"")+d.toFixed(2),rate:(r>=0?"+":"")+r.toFixed(2)+"%"};
+}
 function renderPanel(){
   const t=D.towns[st.town];
-  const rows=t.cmp.map(c=>`<tr><td>${esc(c.item)}</td><td>${fmtN(c.y114)}</td><td>${fmtN(c.y115)}</td><td>${esc(c.diff)}</td><td>${esc(c.rate)}</td></tr>`).join("");
+  const rows=t.cmp.map((c,i)=>{const a=avgOf(i); return `<tr><td>${esc(c.item)}</td><td>${fmtN(c.y114)}</td><td>${fmtN(c.y115)}</td><td>${esc(c.diff)}</td><td>${esc(c.rate)}</td></tr>`+
+    `<tr class="bd-avg"><td>　全縣平均</td><td>${fmtN(a.y114)}</td><td>${fmtN(a.y115)}</td><td>${esc(a.diff)}</td><td>${esc(a.rate)}</td></tr>`;}).join("");
   panel.innerHTML=`
     <div class="bd-ph"><h2>${esc(t.name)}</h2><span>115年與114年1至9月同期比較</span></div>
     <div><div class="bd-sec">同期增減（公噸）</div>
@@ -1400,7 +1410,7 @@ function renderPanel(){
 // 增減率橫條圖：以 0 為中線，增加往右、減少往左；白色短線為全縣同期增減率
 function rateChart(t){
   const pr=s=>{const v=parseFloat(String(s).replace(/[%+,]/g,"")); return isFinite(v)?v:null;};
-  const items=t.cmp.map(c=>({name:c.item,v:pr(c.rate),txt:c.rate,diff:c.diff,cty:pr(D.county[c.item]),ctxt:D.county[c.item]}));
+  const items=t.cmp.map((c,i)=>{const a=avgOf(i); return {name:c.item,v:pr(c.rate),txt:c.rate,diff:c.diff,cty:pr(a.rate),ctxt:a.rate};});
   const lim=Math.max(10,...items.flatMap(o=>[Math.abs(o.v||0),Math.abs(o.cty||0)]))*1.08;
   const W=480,L=172,R=12,rowH=54,T=8,H=T+rowH*items.length+30,iw=W-L-R,cx=L+iw/2,sc=v=>v/lim*(iw/2);
   let g=`<line x1="${cx}" x2="${cx}" y1="${T-2}" y2="${T+rowH*items.length}" stroke="#5B6B6E" stroke-width="1"/>`;
@@ -1419,11 +1429,11 @@ function rateChart(t){
     }else{
       g+=`<text class="val" x="${cx+6}" y="${by+bh/2+6}" font-size="17">${o.v===0?"0.00%":"—"}</text>`;
     }
-    if(o.cty!=null){ const cxp=cx+sc(o.cty); g+=`<line x1="${cxp}" x2="${cxp}" y1="${by-5}" y2="${by+bh+5}" stroke="#F4F7F6" stroke-width="2.5" data-tip="全縣同期 ${esc(o.ctxt)}"/>`; }
+    if(o.cty!=null){ const cxp=cx+sc(o.cty); g+=`<line x1="${cxp}" x2="${cxp}" y1="${by-5}" y2="${by+bh+5}" stroke="#F4F7F6" stroke-width="2.5" data-tip="全縣平均 ${esc(o.ctxt)}"/>`; }
   });
   g+=`<text class="axis" x="${cx}" y="${H-6}" text-anchor="middle" font-size="15">0%</text><text class="axis" x="${L}" y="${H-6}" font-size="15">減少</text><text class="axis" x="${W-R}" y="${H-6}" text-anchor="end" font-size="15">增加</text>`;
   return `<svg class="bd-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t.name)}各項目增減率">${g}</svg>
-    <div class="bd-legend"><span><i style="background:var(--bd-up)"></i>增加</span><span><i style="background:var(--bd-down)"></i>減少</span><span><i class="tick"></i>全縣同期增減率</span></div>`;
+    <div class="bd-legend"><span><i style="background:var(--bd-up)"></i>增加</span><span><i style="background:var(--bd-down)"></i>減少</span><span><i class="tick"></i>全縣平均增減率</span></div>`;
 }
 /* ---- 計時：不顯示；掛在計時器頁且讀得到狀態時，換場次自動切公所 ---- */
 function renderTimer(){
